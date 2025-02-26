@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "composite": true, // 必须保持，因为它是项目引用的要求
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "declaration": true, // 启用声明文件生成
+    "outDir": "./dist", // 指定输出目录（可选，但需要确保与 Vite 兼容）
+    "rootDir": "." // 指定源文件目录
+  },
+  "include": ["vite.config.ts", "vite.config.*.ts"]
+}
