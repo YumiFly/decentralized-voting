@@ -54,7 +54,7 @@ const Navbar: React.FC = () => {
         color: '#000', 
         marginRight: '16px', // 与菜单保持间距
       }}>
-        去中心化彩蛋娱乐平台
+        彩蛋娱乐
       </div>
       <Menu 
         theme="light" 

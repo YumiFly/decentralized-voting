@@ -1,14 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Row, Col, Typography, Card, Select, InputNumber, Space, List, Modal, Spin, message } from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import { Button, Row, Col, Typography, Card, Select, InputNumber, Space, List, Spin, message, Statistic } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useAccount } from 'wagmi'; // 用于连接状态
 
 const { Title, Text } = Typography;
 
+interface LotteryType {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+}
+
 interface LotteryPeriod {
   id: number;
   period: string;
-  date: string;
+  date: number; // 改为毫秒时间戳
 }
 
 interface LotterySelection {
@@ -26,27 +33,37 @@ const Lottery: React.FC = () => {
   const [betAmount, setBetAmount] = useState<number>(0.1); // 默认投注金额（USDT）
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinResult, setSpinResult] = useState<string | null>(null);
+  const [periods, setPeriods] = useState<LotteryPeriod[]>([]); // 改为状态变量
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const navigate = useNavigate();
   const { isConnected } = useAccount();
 
-  interface LotteryType {
-    id: number;
-    name: string;
-    description: string;
-    price: number;
-  }
-
-  // Mock 数据：彩票类型和期号
+  // Mock 数据：彩票类型
   const lotteryTypes: LotteryType[] = [
     { id: 1, name: '数字彩票', description: '基于数字预测的经典彩票', price: 0.1 },
-    { id: 2, name: '幸运转盘彩票', description: '随机转盘抽奖，机会均等', price: 0.15 },
+    { id: 2, name: '幸运转盘彩票', description: '随机转盘抽奖，每 5 分钟一期，快速出奖！', price: 0.15 },
     { id: 3, name: 'NFT 彩票', description: '限时活动专属 NFT 彩票', price: 0.2 },
   ];
-  const periods: LotteryPeriod[] = [
-    { id: 1, period: '2025-03-01 第1期', date: '2025-03-01' },
-    { id: 2, period: '2025-03-01 第2期', date: '2025-03-01' },
-    { id: 3, period: '2025-03-08 第1期', date: '2025-03-08' },
-  ];
+
+  // 生成动态期号（每 5 分钟一期）
+  const generatePeriods = (): LotteryPeriod[] => {
+    const now = new Date();
+    const periods: LotteryPeriod[] = [];
+    for (let i = 0; i < 3; i++) {
+      const nextPeriod = new Date(now.getTime() + i * 5 * 60 * 1000); // 每 5 分钟一期
+      periods.push({
+        id: i + 1,
+        period: `当前期 (第${i + 1}期)`,
+        date: nextPeriod.getTime(), // 直接使用毫秒时间戳
+      });
+    }
+    return periods;
+  };
+
+  // 初始设置 periods
+  useEffect(() => {
+    setPeriods(generatePeriods());
+  }, []);
 
   // 数字范围（1-50）
   const numberRange = Array.from({ length: 50 }, (_, i) => i + 1);
@@ -64,6 +81,9 @@ const Lottery: React.FC = () => {
   const handlePeriodChange = (value: number) => {
     const period = periods.find((p) => p.id === value) || null;
     setSelectedPeriod(period);
+    if (lotteryType === '幸运转盘彩票' && period) {
+      setLotterySelection({ type: '幸运转盘彩票', period });
+    }
   };
 
   const handleNumberSelect = (number: number) => {
@@ -83,7 +103,7 @@ const Lottery: React.FC = () => {
 
   const handleRandomGenerate = () => {
     if (lotteryType !== '数字彩票') return;
-    const randomNumbers:number[] = [];
+    const randomNumbers: number[] = [];
     while (randomNumbers.length < 6) {
       const num = Math.floor(Math.random() * 50) + 1;
       if (!randomNumbers.includes(num)) {
@@ -93,40 +113,75 @@ const Lottery: React.FC = () => {
     setLotterySelection({ type: '数字彩票', period: selectedPeriod!, numbers: randomNumbers.sort((a, b) => a - b) });
   };
 
-  const handleSpin = async () => {
-    if (lotteryType !== '幸运转盘彩票' || !selectedPeriod) return;
-    setIsSpinning(true);
-    await new Promise((resolve) => setTimeout(resolve, 2000)); // 模拟转盘旋转 2 秒
-    const result = spinResults[Math.floor(Math.random() * spinResults.length)];
-    setSpinResult(result);
-    setLotterySelection({ type: '幸运转盘彩票', period: selectedPeriod, spinResult: result });
-    setIsSpinning(false);
-  };
-
   const handleNFTBuy = () => {
     if (lotteryType !== 'NFT 彩票' || !selectedPeriod) return;
     const nftId = Math.floor(Math.random() * 1000) + 1; // 模拟 NFT ID
     setLotterySelection({ type: 'NFT 彩票', period: selectedPeriod, nftId });
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (!isConnected) {
       message.warning('请先连接钱包！');
       navigate('/login');
       return;
     }
-    if (!lotterySelection || !selectedPeriod) {
-      message.error('请先选择彩票类型和期号！');
+    if (!selectedPeriod) {
+      message.error('请先选择期号！');
       return;
     }
+    if (lotteryType === '数字彩票' && (!lotterySelection || !lotterySelection.numbers || lotterySelection.numbers.length !== 6)) {
+      message.error('请先选择 6 个号码！');
+      return;
+    }
+    if (lotteryType === 'NFT 彩票' && !lotterySelection) {
+      message.error('请先购买 NFT 彩票！');
+      return;
+    }
+
     // 模拟支付逻辑（仅 USDT）
+    message.info('支付处理中...');
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 缩短支付延迟至 0.5 秒
+    if (lotteryType === '幸运转盘彩票') {
+      setIsSpinning(true);
+      drawWheel(); // 开始绘制转盘动画
+      // 模拟旋转 1 秒后停止
+      const spinDuration = 1000;
+      const randomAngle = Math.floor(Math.random() * 360); // 随机角度
+      let angle = 0;
+      const spinStep = 20; // 加快旋转速率，每帧旋转 20 度
+      const interval = setInterval(() => {
+        angle += spinStep;
+        if (angle >= randomAngle + 1080) { // 旋转 3 圈（1080°）后再停止
+          clearInterval(interval);
+          const resultIndex = Math.floor((randomAngle % 360) / 72); // 每 72° 一个扇形
+          const result = spinResults[resultIndex % spinResults.length];
+          setSpinResult(result);
+          setLotterySelection((prev) => ({
+            type: '幸运转盘彩票',
+            period: selectedPeriod!,
+            spinResult: result,
+          }));
+          setIsSpinning(false);
+          drawWheel(true, result); // 绘制停止后的转盘
+          completePayment(result); // 支付完成后处理 NFT
+        } else {
+          drawWheel(false); // 持续旋转
+        }
+      }, 16); // 约 60 FPS
+    } else {
+      completePayment(null); // 数字彩票和 NFT 彩票直接支付
+    }
+  };
+
+  const completePayment = (spinResult: string | null) => {
     const nftCertificate = {
       id: Math.floor(Math.random() * 1000) + 1,
-      lotteryType: lotterySelection.type,
-      numbers: lotterySelection.type === '数字彩票' ? lotterySelection.numbers : undefined,
+      lotteryType: lotteryType,
+      numbers: lotteryType === '数字彩票' ? lotterySelection?.numbers : undefined,
       purchaseTime: new Date().toLocaleString(),
       status: '有效',
       transactionHash: `0x${Math.random().toString(16).substr(2, 10)}`,
+      spinResult: lotteryType === '幸运转盘彩票' ? spinResult : undefined,
     };
     message.success(`购买成功！生成 NFT 凭证 ID: ${nftCertificate.id}，支付金额: ${betAmount} USDT`);
     navigate('/wallet'); // 跳转到钱包查看 NFT
@@ -186,28 +241,19 @@ const Lottery: React.FC = () => {
         );
       case '幸运转盘彩票':
         return (
-          <div style={{ textAlign: 'center' }}>
-            <Text>点击开始旋转幸运转盘：</Text>
-            <Button 
-              onClick={handleSpin} 
-              disabled={isSpinning} 
-              style={{ 
-                marginTop: '16px', 
-                background: '#d4a017', 
-                borderColor: '#d4a017', 
-                color: '#ffffff',
-                padding: '12px 24px',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#c99a1d'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#d4a017'}
-            >
-              {isSpinning ? <Spin /> : '开始旋转'}
-            </Button>
+          <div style={{ textAlign: 'center', position: 'relative' }}>
+            <canvas 
+              ref={canvasRef} 
+              width={300} 
+              height={300} 
+              style={{ borderRadius: '50%', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', marginTop: '16px' }}
+            />
             {spinResult && (
               <Text strong style={{ marginTop: '16px', color: '#333333', fontSize: '18px' }}>
                 转盘结果：{spinResult}
               </Text>
             )}
+            <Text style={{ color: '#666666', marginTop: '8px' }}>每 5 分钟一期，快速出奖！</Text>
           </div>
         );
       case 'NFT 彩票':
@@ -241,7 +287,7 @@ const Lottery: React.FC = () => {
   };
 
   const renderConfirmation = () => {
-    if (!lotterySelection || !selectedPeriod) return null;
+    if (!selectedPeriod) return null; // 仅需期号即可显示按钮
     return (
       <Card 
         title={<Text strong style={{ color: '#333333' }}>确认购买</Text>} 
@@ -259,22 +305,25 @@ const Lottery: React.FC = () => {
       >
         <Space direction="vertical" size="large">
           <Text strong style={{ color: '#333333', fontSize: '16px' }}>
-            彩票类型：{lotterySelection.type}
+            彩票类型：{lotteryType}
           </Text>
           <Text style={{ color: '#666666', fontSize: '14px' }}>
             期号：{selectedPeriod.period}
           </Text>
-          {lotterySelection.numbers && (
+          <Text style={{ color: '#666666', fontSize: '14px' }}>
+            倒计时：{getCountdown(selectedPeriod.date.toString())}
+          </Text>
+          {lotteryType === '数字彩票' && lotterySelection?.numbers && (
             <Text style={{ color: '#666666', fontSize: '14px' }}>
               号码：{lotterySelection.numbers.join(', ')}
             </Text>
           )}
-          {lotterySelection.spinResult && (
+          {lotteryType === '幸运转盘彩票' && spinResult && (
             <Text style={{ color: '#666666', fontSize: '14px' }}>
-              转盘结果：{lotterySelection.spinResult}
+              转盘结果：{spinResult}
             </Text>
           )}
-          {lotterySelection.nftId && (
+          {lotteryType === 'NFT 彩票' && lotterySelection?.nftId && (
             <Text style={{ color: '#666666', fontSize: '14px' }}>
               NFT 编号：{lotterySelection.nftId}
             </Text>
@@ -309,11 +358,100 @@ const Lottery: React.FC = () => {
     navigate('/');
   };
 
+  // 绘制转盘函数
+  const drawWheel = (stopped: boolean = false, result: string | null = null) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 140;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 绘制转盘
+    const sectors = spinResults.length;
+    for (let i = 0; i < sectors; i++) {
+      const angle = (2 * Math.PI / sectors) * i;
+      const nextAngle = (2 * Math.PI / sectors) * (i + 1);
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, angle, nextAngle);
+      ctx.fillStyle = `hsl(${i * (360 / sectors)}, 70%, 50%)`; // 渐变色
+      ctx.fill();
+      ctx.closePath();
+
+      // 绘制文字
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(angle + Math.PI / sectors);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText(spinResults[i], radius - 20, 10);
+      ctx.restore();
+    }
+
+    // 绘制指针
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY - radius - 10);
+    ctx.lineTo(centerX - 10, centerY - radius + 10);
+    ctx.lineTo(centerX + 10, centerY - radius + 10);
+    ctx.fillStyle = '#ff4d4f';
+    ctx.fill();
+    ctx.closePath();
+
+    // 如果停止，绘制结果
+    if (stopped && result) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(result, centerX, centerY + 20);
+    }
+
+    // 旋转动画
+    if (isSpinning && !stopped) {
+      ctx.rotate((Math.PI / 180) * 20); // 加快旋转速率，每帧旋转 20 度
+      requestAnimationFrame(() => drawWheel());
+    }
+  };
+
+  // 计算倒计时
+  const getCountdown = (targetDate: string) => {
+    const now = new Date();
+    const target = new Date(targetDate);
+    const diff = target.getTime() - now.getTime();
+    if (diff <= 0) return '已开奖';
+
+    const minutes = Math.floor(diff / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`; // 简化格式为 MM:SS
+  };
+
+  useEffect(() => {
+    if (lotteryType === '幸运转盘彩票' && canvasRef.current) {
+      drawWheel(); // 初始绘制转盘
+    }
+
+    // 每秒更新倒计时和期号
+    const interval = setInterval(() => {
+      setSelectedPeriod((prev) => {
+        if (prev) {
+          const newPeriods = generatePeriods();
+          const updatedPeriod = newPeriods.find((p) => p.id === prev.id) || newPeriods[0];
+          return { ...updatedPeriod, date: updatedPeriod.date };
+        }
+        return null;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lotteryType, selectedPeriod]);
+
   return (
     <div>
-      {/* <Title level={1} style={{ textAlign: 'center', color: '#333333', marginBottom: '40px' }}>
-        彩票购买
-      </Title> */}
       <Row gutter={32}>
         <Col span={8}>
           <Card 
@@ -343,15 +481,23 @@ const Lottery: React.FC = () => {
             <Select
               placeholder="请选择期号"
               onChange={handlePeriodChange}
-              style={{ width: '100%' }}
+              style={{ width: '100%', marginBottom: '16px' }}
               disabled={!lotteryType}
             >
               {periods.map((period) => (
                 <Select.Option key={period.id} value={period.id}>
-                  {period.period} ({period.date})
+                  {period.period} ({new Date(period.date).toLocaleTimeString()})
                 </Select.Option>
               ))}
             </Select>
+            {selectedPeriod && (
+              <Statistic.Countdown
+                title="开奖倒计时"
+                value={new Date(selectedPeriod.date).getTime()}
+                format="mm:ss"
+                valueStyle={{ color: '#d4a017' }} // 金色强调倒计时
+              />
+            )}
           </Card>
         </Col>
         <Col span={8}>
@@ -401,28 +547,6 @@ const Lottery: React.FC = () => {
               />
             </div>
             {renderConfirmation()}
-            {/* <Button 
-              onClick={handleBackToHome} 
-              style={{ 
-                width: '100%', 
-                marginTop: '16px', 
-                borderRadius: '8px',
-                backgroundColor: '#ffffff',
-                borderColor: '#d9d9d9',
-                color: '#333333',
-                transition: 'border-color 0.3s, background-color 0.3s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f5f5f5';
-                e.currentTarget.style.borderColor = '#666666';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#ffffff';
-                e.currentTarget.style.borderColor = '#d9d9d9';
-              }}
-            >
-              返回首页
-            </Button> */}
             {!isConnected && (
               <Text type="warning" style={{ marginTop: '16px', display: 'block', textAlign: 'center', color: '#ff4d4f' }}>
                 购买前请确保连接钱包

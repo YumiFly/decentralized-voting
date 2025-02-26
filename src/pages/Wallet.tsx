@@ -12,13 +12,14 @@ interface Prize {
 }
 
 interface NFTCertificate {
-  id: number;
-  lotteryType: string;
-  numbers: number[];
-  purchaseTime: string;
-  status: '有效' | '已使用';
-  transactionHash?: string; // 模拟交易哈希
-}
+    id: number;
+    lotteryType: string;
+    numbers?: number[];
+    purchaseTime: string;
+    status: '有效' | '已使用';
+    transactionHash?: string;
+    spinResult?: string; // 添加幸运转盘结果
+  }
 
 const Wallet: React.FC = () => {
   const { address, isConnected } = useAccount();
@@ -314,7 +315,7 @@ const Wallet: React.FC = () => {
                   彩票类型：{selectedNFT.lotteryType}
                 </Text>
                 <Text style={{ color: '#666666', fontSize: '16px' }}>
-                  选定号码：<span style={{ color: '#1890ff', fontWeight: 'bold' }}>{selectedNFT.numbers.join(', ')}</span>
+                  选定号码：<span style={{ color: '#1890ff', fontWeight: 'bold' }}>{selectedNFT.spinResult}</span>
                 </Text>
                 <Text style={{ color: '#666666', fontSize: '16px' }}>
                   购买时间：{selectedNFT.purchaseTime}
