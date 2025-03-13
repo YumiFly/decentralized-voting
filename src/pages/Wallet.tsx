@@ -1,370 +1,291 @@
 import React, { useState } from 'react';
-import { Button, Row, Col, Typography, Card, Statistic, Form, Input, List, Space, Modal, message,InputNumber } from 'antd';
-import { useNavigate } from 'react-router-dom';
-import { useAccount, useBalance, useDisconnect } from 'wagmi'; // 用于账户信息、余额和断开连接
+import { Row, Col, Typography, Card, Table, Button, message, Modal, Form, Input, InputNumber } from 'antd';
+import { useAccount } from 'wagmi';
 
 const { Title, Text } = Typography;
 
-interface Prize {
-  id: number;
-  amount: number; // ETH
-  time: string;
-}
-
 interface NFTCertificate {
-    id: number;
-    lotteryType: string;
-    numbers?: number[];
-    purchaseTime: string;
-    status: '有效' | '已使用';
-    transactionHash?: string;
-    spinResult?: string; // 添加幸运转盘结果
-  }
+  key: string;
+  id: number;
+  lotteryType: string;
+  numbers: string;
+  purchaseTime: string;
+  status: string;
+  transactionHash?: string;
+}
 
 const Wallet: React.FC = () => {
   const { address, isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
-  const { data: balance } = useBalance({ address }); // 获取账户余额
-  const [prizes, setPrizes] = useState<Prize[]>([
-    { id: 1, amount: 5000, time: '2025-02-25 14:00' },
-    { id: 2, amount: 1000, time: '2025-02-24 12:00' },
-  ]);
-  const [nftCertificates, setNftCertificates] = useState<NFTCertificate[]>([
-    { id: 1, lotteryType: '幸运数字彩票', numbers: [1, 5, 12, 23, 38, 45], purchaseTime: '2025-02-25 10:00', status: '有效', transactionHash: '0x123...456' },
-    { id: 2, lotteryType: '抽奖型彩票', numbers: [3, 15, 22, 34, 40, 49], purchaseTime: '2025-02-24 09:30', status: '已使用', transactionHash: '0x789...ABC' },
-  ]);
-  const [form] = Form.useForm();
+  const [balance, setBalance] = useState<number>(1000); // Mock 余额
+  const [isWithdrawModalVisible, setIsWithdrawModalVisible] = useState(false);
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+  const [isTransferModalVisible, setIsTransferModalVisible] = useState(false);
   const [selectedNFT, setSelectedNFT] = useState<NFTCertificate | null>(null);
-  const navigate = useNavigate();
+  const [withdrawForm] = Form.useForm();
+  const [transferForm] = Form.useForm();
 
-  const totalPrize = prizes.reduce((sum, prize) => sum + prize.amount, 0); // 未提取奖金总额
-  const ethBalance = balance ? Number(balance.formatted) : 0; // 账户余额（ETH）
+  const nftCertificates: NFTCertificate[] = [
+    { key: '1', id: 1, lotteryType: '双色球', numbers: '3, 12, 17, 23, 28, 32 + 7', purchaseTime: '2025-03-13 10:00:00', status: '有效', transactionHash: '0x123abc' },
+    { key: '2', id: 2, lotteryType: '七乐彩', numbers: '4, 9, 15, 18, 22, 26, 29', purchaseTime: '2025-03-12 15:30:00', status: '已开奖', transactionHash: '0x456def' },
+    { key: '3', id: 3, lotteryType: '3D', numbers: '479', purchaseTime: '2025-03-11 09:00:00', status: '已兑奖', transactionHash: '0x789ghi' },
+  ];
 
+  const columns = [
+    { title: '凭证 ID', dataIndex: 'id', key: 'id' },
+    { title: '彩票类型', dataIndex: 'lotteryType', key: 'lotteryType' },
+    { title: '号码', dataIndex: 'numbers', key: 'numbers' },
+    { title: '购买时间', dataIndex: 'purchaseTime', key: 'purchaseTime' },
+    { title: '状态', dataIndex: 'status', key: 'status' },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_: any, record: NFTCertificate) => (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button
+            onClick={() => {
+              setSelectedNFT(record);
+              setIsDetailModalVisible(true);
+            }}
+            style={{ borderRadius: '8px', background: '#ff4d4f', borderColor: '#ff4d4f', color: '#fff' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#ff7875')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#ff4d4f')}
+          >
+            查看详情
+          </Button>
+          <Button
+            disabled={record.status !== '有效'} // 只有“有效”状态的 NFT 可以转存
+            onClick={() => {
+              setSelectedNFT(record);
+              setIsTransferModalVisible(true);
+            }}
+            style={{ borderRadius: '8px', background: '#1890ff', borderColor: '#1890ff', color: '#fff' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#40a9ff')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#1890ff')}
+          >
+            转存
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  // 提现操作
   const handleWithdraw = (values: any) => {
-    if (!isConnected) {
-      message.warning('请先连接钱包！');
-      navigate('/login');
+    const amount = values.amount;
+    if (amount > balance) {
+      message.error('余额不足！');
       return;
     }
-    const amount = Number(values.amount);
-    if (amount > totalPrize || amount <= 0) {
-      message.error('提现金额无效！');
+    setBalance((prev) => prev - amount);
+    message.success(`成功提现 ${amount} USDT！`);
+    setIsWithdrawModalVisible(false);
+    withdrawForm.resetFields();
+  };
+
+  // 转存操作
+  const handleTransfer = (values: any) => {
+    const targetAddress = values.targetAddress;
+    if (!targetAddress || !/^0x[a-fA-F0-9]{40}$/.test(targetAddress)) {
+      message.error('请输入有效的钱包地址！');
       return;
     }
-    // 模拟提现逻辑
-    setPrizes(prizes.filter((p) => p.amount !== amount)); // 移除已提现的奖金
-    message.success(`成功提现 ${amount} ETH 到 ${values.address}！`);
-    form.resetFields();
-  };
-
-  const handleLogout = () => {
-    if (!isConnected) {
-      message.warning('未连接钱包，无需退出！');
-      return;
-    }
-    disconnect();
-    message.success('已退出登录！');
-    navigate('/login'); // 跳转到登录页面
-  };
-
-  const handleBackToHome = () => {
-    navigate('/'); // 返回首页
-  };
-
-  const showNFTDetail = (nft: NFTCertificate) => {
-    setSelectedNFT(nft);
-  };
-
-  const handleNFTCancel = () => {
-    setSelectedNFT(null);
+    message.success(`NFT 凭证 ${selectedNFT?.id} 已转存到 ${targetAddress}！`);
+    setIsTransferModalVisible(false);
+    transferForm.resetFields();
   };
 
   return (
-    <div>
-      {/* <Title level={1} style={{ textAlign: 'center', color: '#333333', marginBottom: '40px' }}>
-        钱包
-      </Title> */}
+    <div style={{ padding: '40px', background: '#e6f7ff' }}>
       <Row gutter={32}>
-        <Col span={6}>
-          <Card 
-            title={<Text strong style={{ color: '#333333' }}>账户余额</Text>} 
-            bordered={false} 
-            style={{ 
-              borderRadius: '12px', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-              backgroundColor: '#ffffff', 
+        <Col span={8}>
+          <Card
+            title={<Text strong style={{ color: '#fff' }}>钱包信息</Text>}
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #ff4d4f, #ff7875)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               padding: '20px',
-              transition: 'transform 0.3s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            <Statistic 
-              title="余额" 
-              value={ethBalance} 
-              precision={4} 
-              suffix=" ETH" 
-              valueStyle={{ color: '#d4a017' }} // 金色强调余额
-            />
+            <Text style={{ color: '#fff', fontSize: '16px' }}>
+              钱包地址：{isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : '未连接'}
+            </Text>
+            <br />
+            <Text style={{ color: '#fff', fontSize: '16px', marginTop: '16px' }}>
+              余额：{balance} USDT
+            </Text>
+            <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+              <Button
+                style={{
+                  width: '100%',
+                  background: '#ffd700',
+                  borderColor: '#ffd700',
+                  color: '#fff',
+                  borderRadius: '8px',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#ffaa00')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#ffd700')}
+                onClick={() => message.info('充值功能开发中...')}
+              >
+                充值
+              </Button>
+              <Button
+                disabled={!isConnected}
+                style={{
+                  width: '100%',
+                  background: '#1890ff',
+                  borderColor: '#1890ff',
+                  color: '#fff',
+                  borderRadius: '8px',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#40a9ff')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#1890ff')}
+                onClick={() => setIsWithdrawModalVisible(true)}
+              >
+                提现
+              </Button>
+            </div>
           </Card>
         </Col>
-        <Col span={6}>
-          <Card 
-            title={<Text strong style={{ color: '#333333' }}>未提取奖金</Text>} 
-            bordered={false} 
-            style={{ 
-              borderRadius: '12px', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-              backgroundColor: '#ffffff', 
+        <Col span={16}>
+          <Card
+            title={<Text strong style={{ color: '#fff' }}>NFT 凭证</Text>}
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #1890ff, #40a9ff)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               padding: '20px',
-              transition: 'transform 0.3s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            <Statistic 
-              title="总计" 
-              value={totalPrize} 
-              precision={2} 
-              suffix=" ETH" 
-              valueStyle={{ color: '#d4a017' }} // 金色强调奖金
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card 
-            title={<Text strong style={{ color: '#333333' }}>奖金明细</Text>} 
-            bordered={false} 
-            style={{ 
-              borderRadius: '12px', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-              backgroundColor: '#ffffff', 
-              padding: '20px',
-              transition: 'transform 0.3s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            <List
-              dataSource={prizes}
-              renderItem={(prize) => (
-                <List.Item style={{ padding: '12px 0', borderBottom: '1px solid #f0f0f0' }}>
-                  <Space direction="horizontal" size="small">
-                    <Text style={{ color: '#666666', fontSize: '14px' }}>{prize.time}</Text>
-                    <Text strong style={{ color: '#d4a017', fontSize: '16px' }}>{prize.amount} ETH</Text>
-                  </Space>
-                </List.Item>
-              )}
-            />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card 
-            title={<Text strong style={{ color: '#333333' }}>NFT 凭证</Text>} 
-            bordered={false} 
-            style={{ 
-              borderRadius: '12px', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-              backgroundColor: '#ffffff', 
-              padding: '20px',
-              transition: 'transform 0.3s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            <List
+            <Table
+              columns={columns}
               dataSource={nftCertificates}
-              renderItem={(nft) => (
-                <List.Item style={{ padding: '12px 0', borderBottom: '1px solid #f0f0f0' }}>
-                  <Space direction="horizontal" size="small">
-                    <Text style={{ color: '#333333', fontSize: '16px' }}>ID: {nft.id}</Text>
-                    <Text strong style={{ color: '#333333', fontSize: '16px' }}>{nft.lotteryType}</Text>
-                    <Button 
-                      type="link" 
-                      onClick={() => showNFTDetail(nft)}
-                      style={{ padding: 0, color: '#1890ff', fontSize: '14px' }}
-                    >
-                      查看详情
-                    </Button>
-                  </Space>
-                </List.Item>
-              )}
+              pagination={{ pageSize: 5 }}
+              style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden' }}
             />
           </Card>
         </Col>
       </Row>
-      <Row gutter={32} style={{ marginTop: '20px' }}>
-        <Col span={12}>
-          <Card 
-            title={<Text strong style={{ color: '#333333' }}>提现</Text>} 
-            bordered={false} 
-            style={{ 
-              borderRadius: '12px', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-              backgroundColor: '#ffffff', 
-              padding: '20px',
-              transition: 'transform 0.3s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            <Form form={form} onFinish={handleWithdraw} layout="vertical">
-              <Form.Item name="amount" label="提现金额（ETH）" rules={[{ required: true, type: 'number', min: 0 }]}>
-                <InputNumber style={{ width: '100%' }} min={0} placeholder="请输入金额" />
-              </Form.Item>
-              <Form.Item name="address" label="接收地址" rules={[{ required: true }]}>
-                <Input placeholder="请输入以太坊地址（如 0x...）" />
-              </Form.Item>
-              <Form.Item>
-                <Button type="primary" htmlType="submit" style={{ width: '100%' }}>
-                  提交提现
-                </Button>
-              </Form.Item>
-            </Form>
-          </Card>
-        </Col>
-      </Row>
-      <div style={{ textAlign: 'center', marginTop: '40px' }}>
-        {/* <Button 
-          onClick={handleBackToHome} 
-          style={{ 
-            borderRadius: '8px',
-            backgroundColor: '#ffffff',
-            borderColor: '#d9d9d9',
-            color: '#333333',
-            padding: '8px 24px',
-            fontSize: '16px',
-            transition: 'border-color 0.3s, background-color 0.3s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f5f5f5';
-            e.currentTarget.style.borderColor = '#666666';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#ffffff';
-            e.currentTarget.style.borderColor = '#d9d9d9';
-          }}
-        >
-          返回首页
-        </Button>
-        <Button 
-          onClick={handleLogout} 
-          style={{ 
-            marginLeft: '16px',
-            borderRadius: '8px',
-            background: 'linear-gradient(45deg, #ff4d4f, #ff7875)', // 红色渐变，突出退出
-            border: 'none',
-            color: '#ffffff',
-            padding: '8px 24px',
-            fontSize: '16px',
-            transition: 'background 0.3s',
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(45deg, #ff7875, #ff4d4f)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(45deg, #ff4d4f, #ff7875)'}
-        >
-          退出登录
-        </Button> */}
-        {!isConnected && (
-          <Text type="warning" style={{ marginTop: '16px', display: 'block', textAlign: 'center', color: '#ff4d4f' }}>
-            操作前请确保连接钱包
-          </Text>
-        )}
-      </div>
 
-      {/* NFT 凭证详情模态框 */}
+      {/* 提现模态框 */}
       <Modal
-        title={<Text strong style={{ color: '#ffffff' }}>NFT 凭证详情</Text>}
-        open={!!selectedNFT}
-        onCancel={handleNFTCancel}
-        footer={null}
-        width={600}
-        style={{ 
-          borderRadius: '16px', // 更大圆角，现代感
-          background: 'linear-gradient(135deg, #e6f7ff, #ffffff)', // 浅蓝色渐变背景
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)', // 更深的阴影，突出
+        title={<Text strong style={{ color: '#ff4d4f' }}>提现</Text>}
+        open={isWithdrawModalVisible}
+        onCancel={() => {
+          setIsWithdrawModalVisible(false);
+          withdrawForm.resetFields();
         }}
+        footer={null}
+        centered
+        bodyStyle={{ background: '#f5f5f5', padding: '20px', borderRadius: '8px' }}
+      >
+        <Form form={withdrawForm} onFinish={handleWithdraw} layout="vertical">
+          <Form.Item
+            label={<Text strong>提现金额 (USDT)</Text>}
+            name="amount"
+            rules={[{ required: true, message: '请输入提现金额！' }, { type: 'number', min: 1, message: '金额必须大于0！' }]}
+          >
+            <InputNumber min={1} style={{ width: '100%' }} addonAfter="USDT" />
+          </Form.Item>
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, #ff4d4f, #ff7875)',
+                border: 'none',
+                borderRadius: '8px',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'linear-gradient(135deg, #ff7875, #ff4d4f)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'linear-gradient(135deg, #ff4d4f, #ff7875)')}
+            >
+              确认提现
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* NFT 详情模态框 */}
+      <Modal
+        title={<Text strong style={{ color: '#ff4d4f' }}>NFT 凭证详情</Text>}
+        open={isDetailModalVisible}
+        onCancel={() => setIsDetailModalVisible(false)}
+        footer={null}
+        centered
+        bodyStyle={{ background: '#f5f5f5', padding: '20px', borderRadius: '8px' }}
       >
         {selectedNFT && (
-          <div style={{ 
-            padding: '24px', 
-            background: '#ffffff', // 内部白色背景，与渐变形成对比
-            borderRadius: '12px', 
-            border: '2px solid #1890ff', // 蓝色边框，设计感
-          }}>
-            <Space direction="vertical"  style={{ width: '100%' }}>
-              {/* 凭证标题和徽章 */}
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                padding: '12px', 
-                background: 'linear-gradient(45deg, #1890ff, #40a9ff)', // 蓝色渐变徽章
-                borderRadius: '8px', 
-                color: '#ffffff', 
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-              }}>
-                <Text strong style={{ fontSize: '24px' }}>凭证 #{selectedNFT.id}</Text>
-                <Text style={{ fontSize: '16px', background: '#d4a017', padding: '4px 12px', borderRadius: '4px' }}>
-                  {selectedNFT.status}
-                </Text>
-              </div>
-
-              {/* 详细信息 */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <Text strong style={{ color: '#333333', fontSize: '18px' }}>
-                  彩票类型：{selectedNFT.lotteryType}
-                </Text>
-                <Text style={{ color: '#666666', fontSize: '16px' }}>
-                  选定号码：<span style={{ color: '#1890ff', fontWeight: 'bold' }}>{selectedNFT.spinResult}</span>
-                </Text>
-                <Text style={{ color: '#666666', fontSize: '16px' }}>
-                  购买时间：{selectedNFT.purchaseTime}
-                </Text>
-                {selectedNFT.transactionHash && (
-                  <Text style={{ color: '#666666', fontSize: '16px' }}>
-                    交易哈希：<span style={{ color: '#1890ff', fontWeight: 'bold' }}>{selectedNFT.transactionHash}</span>
-                  </Text>
-                )}
-                <Text style={{ color: '#666666', fontSize: '16px' }}>
-                  奖池信息：关联奖池 {jackpot} ETH（模拟数据）
-                </Text>
-              </div>
-
-              {/* 分隔线 */}
-              <div style={{ borderBottom: '2px dashed #1890ff', margin: '16px 0' }} />
-
-              {/* 关闭按钮 */}
-              <Button 
-                onClick={handleNFTCancel} 
-                style={{ 
-                  width: '100%', 
-                  background: 'linear-gradient(45deg, #1890ff, #40a9ff)', 
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#ffffff',
-                  fontSize: '16px',
-                  padding: '12px 24px',
-                  transition: 'background 0.3s, transform 0.3s',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(45deg, #40a9ff, #1890ff)';
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(45deg, #1890ff, #40a9ff)';
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
-              >
-                关闭
-              </Button>
-            </Space>
+          <div>
+            <Text style={{ color: '#000', fontSize: '16px' }}>
+              <strong>凭证 ID：</strong>{selectedNFT.id}
+            </Text>
+            <br />
+            <Text style={{ color: '#000', fontSize: '16px' }}>
+              <strong>彩票类型：</strong>{selectedNFT.lotteryType}
+            </Text>
+            <br />
+            <Text style={{ color: '#000', fontSize: '16px' }}>
+              <strong>号码：</strong>{selectedNFT.numbers}
+            </Text>
+            <br />
+            <Text style={{ color: '#000', fontSize: '16px' }}>
+              <strong>购买时间：</strong>{selectedNFT.purchaseTime}
+            </Text>
+            <br />
+            <Text style={{ color: '#000', fontSize: '16px' }}>
+              <strong>状态：</strong>{selectedNFT.status}
+            </Text>
+            <br />
+            <Text style={{ color: '#000', fontSize: '16px' }}>
+              <strong>交易哈希：</strong>{selectedNFT.transactionHash || '无'}
+            </Text>
           </div>
         )}
+      </Modal>
+
+      {/* NFT 转存模态框 */}
+      <Modal
+        title={<Text strong style={{ color: '#ff4d4f' }}>转存 NFT 凭证</Text>}
+        open={isTransferModalVisible}
+        onCancel={() => {
+          setIsTransferModalVisible(false);
+          transferForm.resetFields();
+        }}
+        footer={null}
+        centered
+        bodyStyle={{ background: '#f5f5f5', padding: '20px', borderRadius: '8px' }}
+      >
+        <Form form={transferForm} onFinish={handleTransfer} layout="vertical">
+          <Form.Item
+            label={<Text strong>目标地址</Text>}
+            name="targetAddress"
+            rules={[{ required: true, message: '请输入目标地址！' }]}
+          >
+            <Input placeholder="请输入目标钱包地址（0x...）" />
+          </Form.Item>
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, #ff4d4f, #ff7875)',
+                border: 'none',
+                borderRadius: '8px',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'linear-gradient(135deg, #ff7875, #ff4d4f)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'linear-gradient(135deg, #ff4d4f, #ff7875)')}
+            >
+              确认转存
+            </Button>
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );
 };
 
-const jackpot = 10000; // 初始值，可根据需要动态更新
 export default Wallet;

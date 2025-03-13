@@ -1,8 +1,7 @@
-// pages/Governance.tsx
 import React, { useState } from 'react';
 import { Button, Row, Col, Typography, Card, List, Form, Input, DatePicker, Radio, Space, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { useAccount } from 'wagmi'; // 可选，用于连接状态
+import { useAccount } from 'wagmi';
 
 const { Title, Text } = Typography;
 
@@ -23,7 +22,7 @@ const Governance: React.FC = () => {
   ]);
   const [form] = Form.useForm();
   const navigate = useNavigate();
-  const { isConnected } = useAccount(); // 可选，用于显示连接状态
+  const { isConnected } = useAccount();
 
   const handleSubmitProposal = (values: any) => {
     if (!isConnected) {
@@ -73,42 +72,56 @@ const Governance: React.FC = () => {
     message.success('提案已执行！');
   };
 
-  const handleBackToHome = () => {
-    navigate('/'); // 返回首页
-  };
-
   return (
-    <div>
-      {/* <Title level={1} style={{ textAlign: 'center', color: '#333333', marginBottom: '40px' }}>
-        平台治理
-      </Title> */}
+    <div style={{ padding: '40px', background: '#e6f7ff' }}>
+      {/* <div
+        style={{
+          background: 'url("https://www.pngall.com/wp-content/uploads/2016/05/White-Paper-PNG-Clipart.png") no-repeat center',
+          backgroundSize: 'contain',
+          height: '100px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '40px',
+        }}
+      >
+        <Title style={{ fontSize: '36px', color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
+          平台治理
+        </Title>
+      </div> */}
       <Row gutter={32}>
         <Col span={12}>
-          <Card 
-            title={<Text strong style={{ color: '#333333' }}>提交新提案</Text>} 
-            bordered={false} 
-            style={{ 
-              borderRadius: '12px', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-              backgroundColor: '#ffffff', 
+          <Card
+            title={<Text strong style={{ color: '#ff4d4f' }}>提交新提案</Text>}
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              background: '#ffffff', // 改为白色背景
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               padding: '20px',
               transition: 'transform 0.3s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
             <Form form={form} onFinish={handleSubmitProposal} layout="vertical">
-              <Form.Item name="title" label="提案标题" rules={[{ required: true }]}>
+              <Form.Item name="title" label={<Text strong>提案标题</Text>} rules={[{ required: true, message: '请输入提案标题' }]}>
                 <Input placeholder="请输入提案标题" />
               </Form.Item>
-              <Form.Item name="description" label="提案描述" rules={[{ required: true }]}>
+              <Form.Item name="description" label={<Text strong>提案描述</Text>} rules={[{ required: true, message: '请输入提案描述' }]}>
                 <Input.TextArea placeholder="请输入提案描述" />
               </Form.Item>
-              <Form.Item name="endTime" label="截止时间" rules={[{ required: true }]}>
-                <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" />
+              <Form.Item name="endTime" label={<Text strong>截止时间</Text>} rules={[{ required: true, message: '请选择截止时间' }]}>
+                <DatePicker showTime format="YYYY-MM-DD HH:mm:ss" style={{ width: '100%' }} />
               </Form.Item>
               <Form.Item>
-                <Button type="primary" htmlType="submit" style={{ width: '100%' }}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  style={{ width: '100%', background: '#ffd700', borderColor: '#ffd700', color: '#fff', borderRadius: '8px' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#ffaa00')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '#ffd700')}
+                >
                   提交提案
                 </Button>
               </Form.Item>
@@ -116,52 +129,52 @@ const Governance: React.FC = () => {
           </Card>
         </Col>
         <Col span={12}>
-          <Card 
-            title={<Text strong style={{ color: '#333333' }}>当前提案</Text>} 
-            bordered={false} 
-            style={{ 
-              borderRadius: '12px', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-              backgroundColor: '#ffffff', 
+          <Card
+            title={<Text strong style={{ color: '#1890ff' }}>当前提案</Text>}
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              background: '#ffffff', // 改为白色背景
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               padding: '20px',
               transition: 'transform 0.3s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
             <List
               dataSource={proposals.filter((p) => p.status === 'Pending')}
               renderItem={(proposal) => (
                 <List.Item style={{ padding: '16px 0', borderBottom: '1px solid #f0f0f0' }}>
                   <Space direction="vertical" size="small">
-                    <Text strong style={{ color: '#333333', fontSize: '16px' }}>{proposal.title}</Text>
-                    <Text style={{ color: '#666666', fontSize: '14px' }}>{proposal.description}</Text>
-                    <Text style={{ color: '#666666', fontSize: '14px' }}>截止时间：{proposal.endTime}</Text>
-                    <Text style={{ color: '#666666', fontSize: '14px' }}>
+                    <Text strong style={{ color: '#333', fontSize: '16px' }}>{proposal.title}</Text>
+                    <Text style={{ color: '#666', fontSize: '14px' }}>{proposal.description}</Text>
+                    <Text style={{ color: '#666', fontSize: '14px' }}>截止时间：{proposal.endTime}</Text>
+                    <Text style={{ color: '#666', fontSize: '14px' }}>
                       投票：支持 {proposal.votesFor}，反对 {proposal.votesAgainst}
                     </Text>
                     <Space>
-                      <Button 
-                        onClick={() => handleVote(proposal.id, 'for')} 
-                        style={{ background: '#1890ff', borderColor: '#1890ff', color: '#ffffff' }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#40a9ff'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = '#1890ff'}
+                      <Button
+                        onClick={() => handleVote(proposal.id, 'for')}
+                        style={{ background: '#52c41a', borderColor: '#52c41a', color: '#fff' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#73d13d')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = '#52c41a')}
                       >
                         支持
                       </Button>
-                      <Button 
-                        onClick={() => handleVote(proposal.id, 'against')} 
-                        style={{ background: '#ff4d4f', borderColor: '#ff4d4f', color: '#ffffff' }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#ff7875'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = '#ff4d4f'}
+                      <Button
+                        onClick={() => handleVote(proposal.id, 'against')}
+                        style={{ background: '#ff4d4f', borderColor: '#ff4d4f', color: '#fff' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#ff7875')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = '#ff4d4f')}
                       >
                         反对
                       </Button>
-                      <Button 
-                        onClick={() => handleExecute(proposal.id)} 
-                        style={{ background: '#52c41a', borderColor: '#52c41a', color: '#ffffff' }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#73d13d'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = '#52c41a'}
+                      <Button
+                        onClick={() => handleExecute(proposal.id)}
+                        style={{ background: '#faad14', borderColor: '#faad14', color: '#fff' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#ffc53d')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = '#faad14')}
                       >
                         执行
                       </Button>
@@ -175,27 +188,27 @@ const Governance: React.FC = () => {
       </Row>
       <Row gutter={32} style={{ marginTop: '20px' }}>
         <Col span={24}>
-          <Card 
-            title={<Text strong style={{ color: '#333333' }}>已执行提案</Text>} 
-            bordered={false} 
-            style={{ 
-              borderRadius: '12px', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-              backgroundColor: '#ffffff', 
+          <Card
+            title={<Text strong style={{ color: '#fa8c16' }}>已执行提案</Text>}
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              background: '#ffffff', // 改为白色背景
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               padding: '20px',
               transition: 'transform 0.3s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
             <List
               dataSource={proposals.filter((p) => p.status === 'Executed')}
               renderItem={(proposal) => (
                 <List.Item style={{ padding: '16px 0', borderBottom: '1px solid #f0f0f0' }}>
                   <Space direction="vertical" size="small">
-                    <Text strong style={{ color: '#333333', fontSize: '16px' }}>{proposal.title}</Text>
-                    <Text style={{ color: '#666666', fontSize: '14px' }}>{proposal.description}</Text>
-                    <Text style={{ color: '#666666', fontSize: '14px' }}>执行时间：{proposal.endTime}</Text>
+                    <Text strong style={{ color: '#333', fontSize: '16px' }}>{proposal.title}</Text>
+                    <Text style={{ color: '#666', fontSize: '14px' }}>{proposal.description}</Text>
+                    <Text style={{ color: '#666', fontSize: '14px' }}>执行时间：{proposal.endTime}</Text>
                   </Space>
                 </List.Item>
               )}
@@ -204,28 +217,6 @@ const Governance: React.FC = () => {
         </Col>
       </Row>
       <div style={{ textAlign: 'center', marginTop: '40px' }}>
-        {/* <Button 
-          onClick={handleBackToHome} 
-          style={{ 
-            borderRadius: '8px',
-            backgroundColor: '#ffffff',
-            borderColor: '#d9d9d9',
-            color: '#333333',
-            padding: '8px 24px',
-            fontSize: '16px',
-            transition: 'border-color 0.3s, background-color 0.3s',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f5f5f5';
-            e.currentTarget.style.borderColor = '#666666';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#ffffff';
-            e.currentTarget.style.borderColor = '#d9d9d9';
-          }}
-        >
-          返回首页
-        </Button> */}
         {!isConnected && (
           <Text type="warning" style={{ marginTop: '16px', display: 'block', textAlign: 'center', color: '#ff4d4f' }}>
             操作前请确保连接钱包

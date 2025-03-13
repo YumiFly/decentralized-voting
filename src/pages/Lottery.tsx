@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Row, Col, Typography, Card, Select, InputNumber, Space, List, Spin, message, Statistic } from 'antd';
-import { useNavigate } from 'react-router-dom';
-import { useAccount } from 'wagmi'; // 用于连接状态
+import { Button, Row, Col, Typography, Card, Select, InputNumber, Space, Statistic, message } from 'antd';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useAccount } from 'wagmi';
 
 const { Title, Text } = Typography;
 
@@ -10,113 +10,173 @@ interface LotteryType {
   name: string;
   description: string;
   price: number;
+  maxNumbers: number;
+  numberRange: [number, number];
+  blueBallRange?: [number, number];
 }
 
 interface LotteryPeriod {
   id: number;
   period: string;
-  date: number; // 改为毫秒时间戳
+  date: number; // 毫秒时间戳
 }
 
 interface LotterySelection {
   type: string;
   period: LotteryPeriod;
-  numbers?: number[]; // 数字彩票
-  spinResult?: string; // 幸运转盘结果
-  nftId?: number; // NFT 彩票编号
+  redNumbers?: number[];
+  blueNumber?: number;
+  multiple?: number;
 }
 
+const lotteryTypes: LotteryType[] = [
+  {
+    id: 1,
+    name: '双色球',
+    description: '6个红色球 (1-33) + 1个蓝色球 (1-16)，每注2元',
+    price: 2,
+    maxNumbers: 6,
+    numberRange: [1, 33],
+    blueBallRange: [1, 16],
+  },
+  {
+    id: 2,
+    name: '七乐彩',
+    description: '7个号码 (1-30)，每注2元，支持单式/复式/胆拖/多倍',
+    price: 2,
+    maxNumbers: 7,
+    numberRange: [1, 30],
+  },
+  {
+    id: 3,
+    name: '3D',
+    description: '3个号码 (000-999)，每注2元，支持1-99倍投注',
+    price: 2,
+    maxNumbers: 3,
+    numberRange: [0, 9], // 每个位置 0-9
+  },
+];
+
+const lotteryRouteMap: Record<string, string> = {
+  shuangseqiu: '双色球',
+  qilecai: '七乐彩',
+  '3d': '3D',
+};
+
 const Lottery: React.FC = () => {
-  const [lotteryType, setLotteryType] = useState<string>('数字彩票');
+  const { lotteryRoute } = useParams<{ lotteryRoute: string }>();
+  const initialLotteryType = lotteryRoute ? lotteryRouteMap[lotteryRoute] || '双色球' : '双色球';
+  const [lotteryType, setLotteryType] = useState<string>(initialLotteryType);
   const [selectedPeriod, setSelectedPeriod] = useState<LotteryPeriod | null>(null);
   const [lotterySelection, setLotterySelection] = useState<LotterySelection | null>(null);
-  const [betAmount, setBetAmount] = useState<number>(0.1); // 默认投注金额（USDT）
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [spinResult, setSpinResult] = useState<string | null>(null);
-  const [periods, setPeriods] = useState<LotteryPeriod[]>([]); // 改为状态变量
+  const [betAmount, setBetAmount] = useState<number>(2);
+  const [multiple, setMultiple] = useState<number>(1);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const navigate = useNavigate();
   const { isConnected } = useAccount();
 
-  // Mock 数据：彩票类型
-  const lotteryTypes: LotteryType[] = [
-    { id: 1, name: '数字彩票', description: '基于数字预测的经典彩票', price: 0.1 },
-    { id: 2, name: '幸运转盘彩票', description: '随机转盘抽奖，每 5 分钟一期，快速出奖！', price: 0.15 },
-    { id: 3, name: 'NFT 彩票', description: '限时活动专属 NFT 彩票', price: 0.2 },
-  ];
-
-  // 生成动态期号（每 5 分钟一期）
+  // 生成动态期号
   const generatePeriods = (): LotteryPeriod[] => {
     const now = new Date();
     const periods: LotteryPeriod[] = [];
+    const days = lotteryType === '七乐彩' ? [2, 4, 7] : lotteryType === '3D' ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4, 5, 6];
     for (let i = 0; i < 3; i++) {
-      const nextPeriod = new Date(now.getTime() + i * 5 * 60 * 1000); // 每 5 分钟一期
+      const nextDate = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
+      if (lotteryType === '七乐彩' && !days.includes(nextDate.getDay())) continue;
       periods.push({
         id: i + 1,
-        period: `当前期 (第${i + 1}期)`,
-        date: nextPeriod.getTime(), // 直接使用毫秒时间戳
+        period: `第${new Date().getFullYear()}${String(i + 1).padStart(3, '0')}期`,
+        date: nextDate.getTime(),
       });
     }
     return periods;
   };
 
-  // 初始设置 periods
   useEffect(() => {
     setPeriods(generatePeriods());
-  }, []);
+  }, [lotteryType]);
 
-  // 数字范围（1-50）
-  const numberRange = Array.from({ length: 50 }, (_, i) => i + 1);
-
-  // 幸运转盘结果（模拟）
-  const spinResults = ['一等奖', '二等奖', '三等奖', '安慰奖', '未中奖'];
+  const [periods, setPeriods] = useState<LotteryPeriod[]>([]);
 
   const handleLotteryTypeChange = (value: string) => {
     setLotteryType(value);
-    setLotterySelection(null); // 重置选择
+    setLotterySelection(null);
     setSelectedPeriod(null);
-    setSpinResult(null);
+    setBetAmount(2);
+    setMultiple(1);
   };
 
   const handlePeriodChange = (value: number) => {
     const period = periods.find((p) => p.id === value) || null;
     setSelectedPeriod(period);
-    if (lotteryType === '幸运转盘彩票' && period) {
-      setLotterySelection({ type: '幸运转盘彩票', period });
-    }
   };
 
-  const handleNumberSelect = (number: number) => {
-    if (lotteryType !== '数字彩票') return;
-    setLotterySelection((prev) => {
-      if (!prev || !prev.numbers) {
-        return { type: '数字彩票', period: selectedPeriod!, numbers: [number] };
-      }
-      if (prev.numbers.includes(number)) {
-        return { ...prev, numbers: prev.numbers.filter((n) => n !== number) };
-      } else if (prev.numbers.length < 6) {
-        return { ...prev, numbers: [...prev.numbers, number].sort((a, b) => a - b) };
-      }
-      return prev;
-    });
+  const handleNumberSelect = (number: number, isBlue?: boolean) => {
+    const type = lotteryTypes.find(t => t.name === lotteryType);
+    if (!type || !selectedPeriod) return;
+
+    if (lotteryType === '3D') {
+      setLotterySelection((prev) => {
+        if (!prev) return { type: lotteryType, period: selectedPeriod, multiple: 1 };
+        const numbers = prev.redNumbers || [];
+        if (numbers.length < type.maxNumbers) {
+          numbers.push(number);
+          return { ...prev, redNumbers: numbers.slice(0, 3) };
+        }
+        return prev;
+      });
+    } else if (lotteryType === '双色球') {
+      setLotterySelection((prev) => {
+        if (!prev) return { type: lotteryType, period: selectedPeriod, multiple: 1 };
+        if (isBlue) {
+          return { ...prev, blueNumber: number };
+        } else {
+          const numbers = prev.redNumbers || [];
+          if (numbers.length < type.maxNumbers) {
+            if (!numbers.includes(number)) numbers.push(number);
+            return { ...prev, redNumbers: numbers.sort((a, b) => a - b).slice(0, 6) };
+          }
+        }
+        return prev;
+      });
+    } else if (lotteryType === '七乐彩') {
+      setLotterySelection((prev) => {
+        if (!prev) return { type: lotteryType, period: selectedPeriod, multiple: 1 };
+        const numbers = prev.redNumbers || [];
+        if (numbers.length < type.maxNumbers) {
+          if (!numbers.includes(number)) numbers.push(number);
+          return { ...prev, redNumbers: numbers.sort((a, b) => a - b).slice(0, 7) };
+        }
+        return prev;
+      });
+    }
   };
 
   const handleRandomGenerate = () => {
-    if (lotteryType !== '数字彩票') return;
-    const randomNumbers: number[] = [];
-    while (randomNumbers.length < 6) {
-      const num = Math.floor(Math.random() * 50) + 1;
-      if (!randomNumbers.includes(num)) {
-        randomNumbers.push(num);
-      }
+    const type = lotteryTypes.find(t => t.name === lotteryType);
+    if (!type) return;
+
+    if (lotteryType === '3D') {
+      const numbers = Array.from({ length: 3 }, () => Math.floor(Math.random() * 10));
+      setLotterySelection({ type: lotteryType, period: selectedPeriod!, redNumbers: numbers, multiple: 1 });
+    } else if (lotteryType === '双色球') {
+      const redNumbers = Array.from({ length: 6 }, () => Math.floor(Math.random() * 33) + 1).sort((a, b) => a - b);
+      const blueNumber = Math.floor(Math.random() * 16) + 1;
+      setLotterySelection({ type: lotteryType, period: selectedPeriod!, redNumbers, blueNumber, multiple: 1 });
+    } else if (lotteryType === '七乐彩') {
+      const numbers = Array.from({ length: 7 }, () => Math.floor(Math.random() * 30) + 1).sort((a, b) => a - b);
+      setLotterySelection({ type: lotteryType, period: selectedPeriod!, redNumbers: numbers, multiple: 1 });
     }
-    setLotterySelection({ type: '数字彩票', period: selectedPeriod!, numbers: randomNumbers.sort((a, b) => a - b) });
   };
 
-  const handleNFTBuy = () => {
-    if (lotteryType !== 'NFT 彩票' || !selectedPeriod) return;
-    const nftId = Math.floor(Math.random() * 1000) + 1; // 模拟 NFT ID
-    setLotterySelection({ type: 'NFT 彩票', period: selectedPeriod, nftId });
+  const handleMultipleChange = (value: number | null) => {
+    const type = lotteryTypes.find(t => t.name === lotteryType);
+    if (!type) return;
+    const newMultiple = value || 1;
+    const maxMultiple = lotteryType === '3D' ? 99 : 1; // 3D 支持 1-99 倍
+    const finalMultiple = Math.min(Math.max(1, newMultiple), maxMultiple);
+    setMultiple(finalMultiple);
+    setBetAmount(type.price * finalMultiple);
   };
 
   const handlePayment = async () => {
@@ -129,223 +189,275 @@ const Lottery: React.FC = () => {
       message.error('请先选择期号！');
       return;
     }
-    if (lotteryType === '数字彩票' && (!lotterySelection || !lotterySelection.numbers || lotterySelection.numbers.length !== 6)) {
-      message.error('请先选择 6 个号码！');
+    const type = lotteryTypes.find(t => t.name === lotteryType);
+    if (!type) return;
+
+    if (lotteryType === '3D' && (!lotterySelection || !lotterySelection.redNumbers || lotterySelection.redNumbers.length !== 3)) {
+      message.error('请选3个号码！');
       return;
     }
-    if (lotteryType === 'NFT 彩票' && !lotterySelection) {
-      message.error('请先购买 NFT 彩票！');
+    if (lotteryType === '双色球' && (!lotterySelection || !lotterySelection.redNumbers || lotterySelection.redNumbers.length !== 6 || !lotterySelection.blueNumber)) {
+      message.error('请选6个红色球和1个蓝色球！');
+      return;
+    }
+    if (lotteryType === '七乐彩' && (!lotterySelection || !lotterySelection.redNumbers || lotterySelection.redNumbers.length !== 7)) {
+      message.error('请选7个号码！');
+      return;
+    }
+    if (betAmount > 20000) {
+      message.error('单张彩票投注金额不得超过20000元！');
       return;
     }
 
-    // 模拟支付逻辑（仅 USDT）
     message.info('支付处理中...');
-    await new Promise((resolve) => setTimeout(resolve, 500)); // 缩短支付延迟至 0.5 秒
-    if (lotteryType === '幸运转盘彩票') {
-      setIsSpinning(true);
-      drawWheel(); // 开始绘制转盘动画
-      // 模拟旋转 1 秒后停止
-      const spinDuration = 1000;
-      const randomAngle = Math.floor(Math.random() * 360); // 随机角度
-      let angle = 0;
-      const spinStep = 20; // 加快旋转速率，每帧旋转 20 度
-      const interval = setInterval(() => {
-        angle += spinStep;
-        if (angle >= randomAngle + 1080) { // 旋转 3 圈（1080°）后再停止
-          clearInterval(interval);
-          const resultIndex = Math.floor((randomAngle % 360) / 72); // 每 72° 一个扇形
-          const result = spinResults[resultIndex % spinResults.length];
-          setSpinResult(result);
-          setLotterySelection((prev) => ({
-            type: '幸运转盘彩票',
-            period: selectedPeriod!,
-            spinResult: result,
-          }));
-          setIsSpinning(false);
-          drawWheel(true, result); // 绘制停止后的转盘
-          completePayment(result); // 支付完成后处理 NFT
-        } else {
-          drawWheel(false); // 持续旋转
-        }
-      }, 16); // 约 60 FPS
-    } else {
-      completePayment(null); // 数字彩票和 NFT 彩票直接支付
-    }
-  };
-
-  const completePayment = (spinResult: string | null) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
     const nftCertificate = {
       id: Math.floor(Math.random() * 1000) + 1,
       lotteryType: lotteryType,
-      numbers: lotteryType === '数字彩票' ? lotterySelection?.numbers : undefined,
+      numbers: lotterySelection?.redNumbers,
+      blueNumber: lotterySelection?.blueNumber,
+      multiple: lotterySelection?.multiple,
       purchaseTime: new Date().toLocaleString(),
       status: '有效',
       transactionHash: `0x${Math.random().toString(16).substr(2, 10)}`,
-      spinResult: lotteryType === '幸运转盘彩票' ? spinResult : undefined,
     };
-    message.success(`购买成功！生成 NFT 凭证 ID: ${nftCertificate.id}，支付金额: ${betAmount} USDT`);
-    navigate('/wallet'); // 跳转到钱包查看 NFT
-    // 模拟将 NFT 添加到钱包（实际项目中可通过状态管理或 API 实现）
-    // setNftCertificates((prev) => [...prev, nftCertificate]);
+    message.success(`购买成功！生成 NFT 凭证 ID: ${nftCertificate.id}, 支付金额: ${betAmount} USDT`);
+    navigate('/wallet');
   };
 
   const renderSelection = () => {
-    switch (lotteryType) {
-      case '数字彩票':
-        return (
-          <div>
-            <Text>选择 6 个号码（1-50）：</Text>
-            <Button 
-              onClick={handleRandomGenerate} 
-              style={{ marginLeft: '10px', background: '#d4a017', borderColor: '#d4a017', color: '#ffffff' }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#c99a1d'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#d4a017'}
-            >
-              随机选号
-            </Button>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '16px' }}>
-              {numberRange.map((number) => (
-                <Button
-                  key={number}
-                  type={lotterySelection?.numbers?.includes(number) ? 'primary' : 'default'}
-                  onClick={() => handleNumberSelect(number)}
-                  style={{ 
-                    borderRadius: '50%', 
-                    width: '40px', 
-                    height: '40px',
-                    background: lotterySelection?.numbers?.includes(number) ? '#1890ff' : '#ffffff',
-                    borderColor: lotterySelection?.numbers?.includes(number) ? '#1890ff' : '#d9d9d9',
-                    transition: 'background 0.3s, border-color 0.3s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!lotterySelection?.numbers?.includes(number)) {
-                      e.currentTarget.style.background = '#e6f7ff';
-                      e.currentTarget.style.borderColor = '#1890ff';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!lotterySelection?.numbers?.includes(number)) {
-                      e.currentTarget.style.background = '#ffffff';
-                      e.currentTarget.style.borderColor = '#d9d9d9';
-                    }
-                  }}
-                >
-                  {number}
-                </Button>
-              ))}
-            </div>
-            <Text strong style={{ marginTop: '16px', color: '#333333' }}>
-              已选号码：{lotterySelection?.numbers?.length === 0 ? '无' : lotterySelection?.numbers?.join(', ')}
-            </Text>
+    const type = lotteryTypes.find(t => t.name === lotteryType);
+    if (!type) return null;
+
+    if (lotteryType === '3D') {
+      return (
+        <div>
+          <Text style={{ color: '#fff' }}>选择3个号码 (000-999)：</Text>
+          <Button
+            onClick={handleRandomGenerate}
+            style={{ marginLeft: '10px', background: '#ffd700', borderColor: '#ffd700', color: '#fff', borderRadius: '8px' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#ffaa00')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#ffd700')}
+          >
+            随机选号
+          </Button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '16px' }}>
+            {Array.from({ length: 10 }, (_, i) => i).map((number) => (
+              <Button
+                key={number}
+                type={lotterySelection?.redNumbers?.includes(number) ? 'primary' : 'default'}
+                onClick={() => handleNumberSelect(number)}
+                style={{
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  background: lotterySelection?.redNumbers?.includes(number) ? '#ff4d4f' : '#fff',
+                  borderColor: lotterySelection?.redNumbers?.includes(number) ? '#ff4d4f' : '#d9d9d9',
+                  color: lotterySelection?.redNumbers?.includes(number) ? '#fff' : '#000',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!lotterySelection?.redNumbers?.includes(number)) {
+                    e.currentTarget.style.background = '#e6f7ff';
+                    e.currentTarget.style.borderColor = '#ff4d4f';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!lotterySelection?.redNumbers?.includes(number)) {
+                    e.currentTarget.style.background = '#fff';
+                    e.currentTarget.style.borderColor = '#d9d9d9';
+                  }
+                }}
+              >
+                {number}
+              </Button>
+            ))}
           </div>
-        );
-      case '幸运转盘彩票':
-        return (
-          <div style={{ textAlign: 'center', position: 'relative' }}>
-            <canvas 
-              ref={canvasRef} 
-              width={300} 
-              height={300} 
-              style={{ borderRadius: '50%', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', marginTop: '16px' }}
-            />
-            {spinResult && (
-              <Text strong style={{ marginTop: '16px', color: '#333333', fontSize: '18px' }}>
-                转盘结果：{spinResult}
-              </Text>
-            )}
-            <Text style={{ color: '#666666', marginTop: '8px' }}>每 5 分钟一期，快速出奖！</Text>
+          <Text strong style={{ marginTop: '16px', color: '#fff' }}>
+            已选号码：{lotterySelection?.redNumbers?.join('') || '无'}
+          </Text>
+        </div>
+      );
+    } else if (lotteryType === '双色球') {
+      return (
+        <div>
+          <Text style={{ color: '#fff' }}>选择6个红色球 (1-33) 和1个蓝色球 (1-16)：</Text>
+          <Button
+            onClick={handleRandomGenerate}
+            style={{ marginLeft: '10px', background: '#ffd700', borderColor: '#ffd700', color: '#fff', borderRadius: '8px' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#ffaa00')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#ffd700')}
+          >
+            随机选号
+          </Button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '16px' }}>
+            {Array.from({ length: 33 }, (_, i) => i + 1).map((number) => (
+              <Button
+                key={number}
+                type={lotterySelection?.redNumbers?.includes(number) ? 'primary' : 'default'}
+                onClick={() => handleNumberSelect(number)}
+                style={{
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  background: lotterySelection?.redNumbers?.includes(number) ? '#ff4d4f' : '#fff',
+                  borderColor: lotterySelection?.redNumbers?.includes(number) ? '#ff4d4f' : '#d9d9d9',
+                  color: lotterySelection?.redNumbers?.includes(number) ? '#fff' : '#000',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!lotterySelection?.redNumbers?.includes(number)) {
+                    e.currentTarget.style.background = '#e6f7ff';
+                    e.currentTarget.style.borderColor = '#ff4d4f';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!lotterySelection?.redNumbers?.includes(number)) {
+                    e.currentTarget.style.background = '#fff';
+                    e.currentTarget.style.borderColor = '#d9d9d9';
+                  }
+                }}
+              >
+                {number}
+              </Button>
+            ))}
+            {Array.from({ length: 16 }, (_, i) => i + 1).map((number) => (
+              <Button
+                key={`blue-${number}`}
+                type={lotterySelection?.blueNumber === number ? 'primary' : 'default'}
+                onClick={() => handleNumberSelect(number, true)}
+                style={{
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  background: lotterySelection?.blueNumber === number ? '#1890ff' : '#fff',
+                  borderColor: lotterySelection?.blueNumber === number ? '#1890ff' : '#d9d9d9',
+                  color: lotterySelection?.blueNumber === number ? '#fff' : '#000',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (lotterySelection?.blueNumber !== number) {
+                    e.currentTarget.style.background = '#e6f7ff';
+                    e.currentTarget.style.borderColor = '#1890ff';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (lotterySelection?.blueNumber !== number) {
+                    e.currentTarget.style.background = '#fff';
+                    e.currentTarget.style.borderColor = '#d9d9d9';
+                  }
+                }}
+              >
+                {number}
+              </Button>
+            ))}
           </div>
-        );
-      case 'NFT 彩票':
-        return (
-          <div>
-            <Text>购买后生成独特 NFT 彩票：</Text>
-            <Button 
-              onClick={handleNFTBuy} 
-              style={{ 
-                marginTop: '16px', 
-                background: '#1890ff', 
-                borderColor: '#1890ff', 
-                color: '#ffffff',
-                padding: '12px 24px',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#40a9ff'}
-              onMouseLeave={(e) => e.currentTarget.style.background = '#1890ff'}
-            >
-              购买 NFT 彩票
-            </Button>
-            {lotterySelection?.nftId && (
-              <Text strong style={{ marginTop: '16px', color: '#333333', fontSize: '18px' }}>
-                NFT 编号：{lotterySelection.nftId}
-              </Text>
-            )}
+          <Text strong style={{ marginTop: '16px', color: '#fff' }}>
+            已选号码：{lotterySelection?.redNumbers?.join(', ') || '无'} + {lotterySelection?.blueNumber || '无'}
+          </Text>
+        </div>
+      );
+    } else if (lotteryType === '七乐彩') {
+      return (
+        <div>
+          <Text style={{ color: '#fff' }}>选择7个号码 (1-30)：</Text>
+          <Button
+            onClick={handleRandomGenerate}
+            style={{ marginLeft: '10px', background: '#ffd700', borderColor: '#ffd700', color: '#fff', borderRadius: '8px' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#ffaa00')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#ffd700')}
+          >
+            随机选号
+          </Button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '16px' }}>
+            {Array.from({ length: 30 }, (_, i) => i + 1).map((number) => (
+              <Button
+                key={number}
+                type={lotterySelection?.redNumbers?.includes(number) ? 'primary' : 'default'}
+                onClick={() => handleNumberSelect(number)}
+                style={{
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  background: lotterySelection?.redNumbers?.includes(number) ? '#fa8c16' : '#fff',
+                  borderColor: lotterySelection?.redNumbers?.includes(number) ? '#fa8c16' : '#d9d9d9',
+                  color: lotterySelection?.redNumbers?.includes(number) ? '#fff' : '#000',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!lotterySelection?.redNumbers?.includes(number)) {
+                    e.currentTarget.style.background = '#e6f7ff';
+                    e.currentTarget.style.borderColor = '#fa8c16';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!lotterySelection?.redNumbers?.includes(number)) {
+                    e.currentTarget.style.background = '#fff';
+                    e.currentTarget.style.borderColor = '#d9d9d9';
+                  }
+                }}
+              >
+                {number}
+              </Button>
+            ))}
           </div>
-        );
-      default:
-        return null;
+          <Text strong style={{ marginTop: '16px', color: '#fff' }}>
+            已选号码：{lotterySelection?.redNumbers?.join(', ') || '无'}
+          </Text>
+        </div>
+      );
     }
+    return null;
   };
 
   const renderConfirmation = () => {
-    if (!selectedPeriod) return null; // 仅需期号即可显示按钮
+    if (!selectedPeriod) return null;
+    const type = lotteryTypes.find(t => t.name === lotteryType);
+    if (!type || !lotterySelection) return null;
+
     return (
-      <Card 
-        title={<Text strong style={{ color: '#333333' }}>确认购买</Text>} 
-        bordered={false} 
-        style={{ 
-          borderRadius: '12px', 
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-          backgroundColor: '#ffffff', 
+      <Card
+        title={<Text strong style={{ color: '#fff' }}>确认购买</Text>}
+        bordered={false}
+        style={{
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, #ffd700, #ffaa00)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
           padding: '20px',
-          marginTop: '20px',
-          transition: 'transform 0.3s',
         }}
-        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
       >
         <Space direction="vertical" size="large">
-          <Text strong style={{ color: '#333333', fontSize: '16px' }}>
-            彩票类型：{lotteryType}
-          </Text>
-          <Text style={{ color: '#666666', fontSize: '14px' }}>
-            期号：{selectedPeriod.period}
-          </Text>
-          <Text style={{ color: '#666666', fontSize: '14px' }}>
+          <Text strong style={{ color: '#fff', fontSize: '16px' }}>彩票类型：{lotteryType}</Text>
+          <Text style={{ color: '#fff', fontSize: '14px' }}>期号：{selectedPeriod.period}</Text>
+          <Text style={{ color: '#fff', fontSize: '14px' }}>
             倒计时：{getCountdown(selectedPeriod.date.toString())}
           </Text>
-          {lotteryType === '数字彩票' && lotterySelection?.numbers && (
-            <Text style={{ color: '#666666', fontSize: '14px' }}>
-              号码：{lotterySelection.numbers.join(', ')}
+          {lotterySelection.redNumbers && (
+            <Text style={{ color: '#fff', fontSize: '14px' }}>
+              号码：{lotterySelection.redNumbers.join(', ')}
+              {lotterySelection.blueNumber && ` + ${lotterySelection.blueNumber}`}
             </Text>
           )}
-          {lotteryType === '幸运转盘彩票' && spinResult && (
-            <Text style={{ color: '#666666', fontSize: '14px' }}>
-              转盘结果：{spinResult}
-            </Text>
+          {lotteryType === '3D' && lotterySelection.multiple && (
+            <Text style={{ color: '#fff', fontSize: '14px' }}>倍数：{lotterySelection.multiple}倍</Text>
           )}
-          {lotteryType === 'NFT 彩票' && lotterySelection?.nftId && (
-            <Text style={{ color: '#666666', fontSize: '14px' }}>
-              NFT 编号：{lotterySelection.nftId}
-            </Text>
-          )}
-          <Text strong style={{ color: '#d4a017', fontSize: '18px' }}>
+          <Text strong style={{ color: '#ff4d4f', fontSize: '18px' }}>
             投注金额：{betAmount} USDT
           </Text>
           <Button
             type="primary"
             size="large"
             onClick={handlePayment}
-            style={{ 
-              width: '100%', 
-              background: 'linear-gradient(45deg, #1890ff, #40a9ff)', 
+            style={{
+              width: '100%',
+              background: '#ff4d4f',
               border: 'none',
               borderRadius: '8px',
               fontSize: '16px',
               padding: '12px 24px',
-              transition: 'background 0.3s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(45deg, #40a9ff, #1890ff)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(45deg, #1890ff, #40a9ff)'}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#ff7875')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#ff4d4f')}
           >
             立即支付
           </Button>
@@ -354,72 +466,6 @@ const Lottery: React.FC = () => {
     );
   };
 
-  const handleBackToHome = () => {
-    navigate('/');
-  };
-
-  // 绘制转盘函数
-  const drawWheel = (stopped: boolean = false, result: string | null = null) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const radius = 140;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 绘制转盘
-    const sectors = spinResults.length;
-    for (let i = 0; i < sectors; i++) {
-      const angle = (2 * Math.PI / sectors) * i;
-      const nextAngle = (2 * Math.PI / sectors) * (i + 1);
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.arc(centerX, centerY, radius, angle, nextAngle);
-      ctx.fillStyle = `hsl(${i * (360 / sectors)}, 70%, 50%)`; // 渐变色
-      ctx.fill();
-      ctx.closePath();
-
-      // 绘制文字
-      ctx.save();
-      ctx.translate(centerX, centerY);
-      ctx.rotate(angle + Math.PI / sectors);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '16px Arial';
-      ctx.textAlign = 'right';
-      ctx.fillText(spinResults[i], radius - 20, 10);
-      ctx.restore();
-    }
-
-    // 绘制指针
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY - radius - 10);
-    ctx.lineTo(centerX - 10, centerY - radius + 10);
-    ctx.lineTo(centerX + 10, centerY - radius + 10);
-    ctx.fillStyle = '#ff4d4f';
-    ctx.fill();
-    ctx.closePath();
-
-    // 如果停止，绘制结果
-    if (stopped && result) {
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '20px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(result, centerX, centerY + 20);
-    }
-
-    // 旋转动画
-    if (isSpinning && !stopped) {
-      ctx.rotate((Math.PI / 180) * 20); // 加快旋转速率，每帧旋转 20 度
-      requestAnimationFrame(() => drawWheel());
-    }
-  };
-
-  // 计算倒计时
   const getCountdown = (targetDate: string) => {
     const now = new Date();
     const target = new Date(targetDate);
@@ -428,15 +474,10 @@ const Lottery: React.FC = () => {
 
     const minutes = Math.floor(diff / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`; // 简化格式为 MM:SS
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   useEffect(() => {
-    if (lotteryType === '幸运转盘彩票' && canvasRef.current) {
-      drawWheel(); // 初始绘制转盘
-    }
-
-    // 每秒更新倒计时和期号
     const interval = setInterval(() => {
       setSelectedPeriod((prev) => {
         if (prev) {
@@ -448,27 +489,40 @@ const Lottery: React.FC = () => {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [lotteryType, selectedPeriod]);
+  }, [lotteryType]);
 
   return (
-    <div>
+    <div style={{ padding: '40px', background: '#e6f7ff' }}>
+      <div
+        style={{
+          background: 'url("https://www.pngall.com/wp-content/uploads/2016/05/White-Paper-PNG-Clipart.png") no-repeat center',
+          backgroundSize: 'contain',
+          height: '100px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '40px',
+        }}
+      >
+        <Title style={{ fontSize: '36px', color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
+          购买 {lotteryType}
+        </Title>
+      </div>
+
       <Row gutter={32}>
         <Col span={8}>
-          <Card 
-            title={<Text strong style={{ color: '#333333' }}>选择彩票类型与期号</Text>} 
-            bordered={false} 
-            style={{ 
-              borderRadius: '12px', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-              backgroundColor: '#ffffff', 
+          <Card
+            title={<Text strong style={{ color: '#fff' }}>选择彩票类型与期号</Text>}
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #ff4d4f, #ff7875)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               padding: '20px',
-              transition: 'transform 0.3s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
             <Select
-              placeholder="请选择彩票类型"
+              value={lotteryType}
               onChange={handleLotteryTypeChange}
               style={{ width: '100%', marginBottom: '16px' }}
             >
@@ -486,7 +540,7 @@ const Lottery: React.FC = () => {
             >
               {periods.map((period) => (
                 <Select.Option key={period.id} value={period.id}>
-                  {period.period} ({new Date(period.date).toLocaleTimeString()})
+                  {period.period} ({new Date(period.date).toLocaleDateString()})
                 </Select.Option>
               ))}
             </Select>
@@ -495,55 +549,57 @@ const Lottery: React.FC = () => {
                 title="开奖倒计时"
                 value={new Date(selectedPeriod.date).getTime()}
                 format="mm:ss"
-                valueStyle={{ color: '#d4a017' }} // 金色强调倒计时
+                valueStyle={{ color: '#ffd700', fontSize: '24px', fontWeight: 'bold' }}
               />
             )}
           </Card>
         </Col>
         <Col span={8}>
-          <Card 
-            title={<Text strong style={{ color: '#333333' }}>选号</Text>} 
-            bordered={false} 
-            style={{ 
-              borderRadius: '12px', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-              backgroundColor: '#ffffff', 
+          <Card
+            title={<Text strong style={{ color: '#fff' }}>选号</Text>}
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #1890ff, #40a9ff)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               padding: '20px',
-              transition: 'transform 0.3s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
             {renderSelection()}
+            {lotteryType === '3D' && (
+              <InputNumber
+                min={1}
+                max={99}
+                value={multiple}
+                onChange={handleMultipleChange}
+                style={{ marginTop: '16px', width: '100%' }}
+                addonAfter="倍"
+              />
+            )}
           </Card>
         </Col>
         <Col span={8}>
-          <Card 
-            title={<Text strong style={{ color: '#333333' }}>投注与支付</Text>} 
-            bordered={false} 
-            style={{ 
-              borderRadius: '12px', 
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', 
-              backgroundColor: '#ffffff', 
+          <Card
+            title={<Text strong style={{ color: '#fff' }}>投注与支付</Text>}
+            bordered={false}
+            style={{
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #fa8c16, #fadb14)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
               padding: '20px',
               height: '100%',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              transition: 'transform 0.3s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
             <div>
-              <Text strong style={{ color: '#333333', marginBottom: '16px' }}>投注金额 (USDT)</Text>
+              <Text strong style={{ color: '#fff', marginBottom: '16px' }}>投注金额 (USDT)</Text>
               <InputNumber
                 value={betAmount}
-                onChange={(value) => setBetAmount(Number(value) || 0.1)}
-                min={0.1}
-                step={0.1}
-                addonAfter="USDT"
+                disabled
                 style={{ width: '100%', marginBottom: '16px' }}
+                addonAfter="USDT"
               />
             </div>
             {renderConfirmation()}

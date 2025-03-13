@@ -18,7 +18,7 @@ const PollMain: React.FC = () => {
   const provider = usePublicClient();
 
   const { data: pollCount } = useReadContract({
-    address: '0xYourActualContractAddress',
+    address: '0xc882303b8a28e57f138d740c452879b262ef8890',
     abi: VotingABI,
     functionName: 'pollsLength',
     query: {
