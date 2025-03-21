@@ -21,7 +21,7 @@ const Login: React.FC = () => {
   }
 
   const handleWalletConnect = () => {
-    open(); // 触发 web3modal 的钱包选择弹框
+    open();
   };
 
   const handlePhoneLogin = () => {
@@ -38,7 +38,7 @@ const Login: React.FC = () => {
 
   return (
     <div style={{ padding: '40px', background: '#e6f7ff', textAlign: 'center' }}>
-      <div
+      {/* <div
         style={{
           background: 'url("https://www.pngall.com/wp-content/uploads/2016/05/White-Paper-PNG-Clipart.png") no-repeat center',
           backgroundSize: 'contain',
@@ -52,7 +52,7 @@ const Login: React.FC = () => {
         <Title style={{ fontSize: '36px', color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
           欢迎来到彩蛋娱乐
         </Title>
-      </div>
+      </div> */}
       <Text style={{ fontSize: '16px', color: '#666' }}>
         请连接钱包或使用手机号码登录以访问更多功能
       </Text>

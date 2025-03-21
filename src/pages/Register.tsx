@@ -44,7 +44,6 @@ const Register: React.FC = () => {
   // 下一步
   const nextStep = () => {
     form.validateFields().then(() => {
-      // 在“连接钱包”步骤时，确保 walletAddress 已填充
       if (currentStep === 1 && !form.getFieldValue('walletAddress')) {
         message.warning('请先连接钱包！');
         return;
@@ -61,13 +60,11 @@ const Register: React.FC = () => {
   // 提交注册信息
   const handleSubmit = () => {
     form.validateFields().then(values => {
-      // 模拟提交注册信息
       console.log('注册信息:', values);
-      // 提交成功后断开钱包
       disconnect();
-      form.setFieldsValue({ walletAddress: undefined }); // 清空钱包地址
+      form.setFieldsValue({ walletAddress: undefined });
       message.success('注册成功！当前 KYC 待审批，3 个工作日内审批通过后会通知您。');
-      navigate('/'); // 提交后跳转到首页
+      navigate('/');
     });
   };
 
@@ -117,11 +114,12 @@ const Register: React.FC = () => {
                   maxWidth: '400px',
                   borderRadius: '8px',
                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                  background: '#fff',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', padding: '8px' }}>
-                  <WalletOutlined style={{ fontSize: '24px', color: '#ff4d4f', marginRight: '8px' }} />
-                  <Text style={{ fontSize: '16px', color: '#333' }}>
+                  <WalletOutlined style={{ fontSize: '24px', color: '#fa8c16', marginRight: '8px' }} />
+                  <Text style={{ fontSize: '16px', color: '#595959' }}>
                     {address.slice(0, 6)}...{address.slice(-4)}
                   </Text>
                 </div>
@@ -135,32 +133,34 @@ const Register: React.FC = () => {
             style={{
               height: '50px',
               fontSize: '16px',
-              background: isConnected
-                ? 'linear-gradient(135deg, #ff7875, #ff4d4f)'
-                : 'linear-gradient(135deg, #ff4d4f, #ff7875)',
-              border: 'none',
+              background: '#fff1e6',
               borderRadius: '8px',
+              border: '1px solid #fa8c16',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto',
               maxWidth: '300px',
-              color: '#fff',
+              color: '#fa8c16',
               transition: 'all 0.3s ease',
             }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background = isConnected
-                ? 'linear-gradient(135deg, #ff4d4f, #ff7875)'
-                : 'linear-gradient(135deg, #ff7875, #ff4d4f)')
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.background = isConnected
-                ? 'linear-gradient(135deg, #ff7875, #ff4d4f)'
-                : 'linear-gradient(135deg, #ff4d4f, #ff7875)')
-            }
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#fa8c16';
+              e.currentTarget.style.color = '#fff';
+              e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                (icon as HTMLElement).style.color = '#fff';
+              });
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#fff1e6';
+              e.currentTarget.style.color = '#fa8c16';
+              e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                (icon as HTMLElement).style.color = '#fa8c16';
+              });
+            }}
             onClick={handleConnectWallet}
           >
-            <WalletOutlined style={{ marginRight: '8px' }} />
+            <WalletOutlined style={{ marginRight: '8px', color: '#fa8c16' }} />
             {isConnected ? '断开钱包' : '连接钱包'}
           </Button>
         </div>
@@ -184,7 +184,34 @@ const Register: React.FC = () => {
             getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
           >
             <Upload {...uploadProps} maxCount={1}>
-              <Button icon={<UploadOutlined />}>上传身份证照片</Button>
+              <Button
+                icon={<UploadOutlined />}
+                style={{
+                  height: '40px',
+                  fontSize: '16px',
+                  background: '#fff1e6',
+                  borderRadius: '8px',
+                  border: '1px solid #fa8c16',
+                  color: '#fa8c16',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#fa8c16';
+                  e.currentTarget.style.color = '#fff';
+                  e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                    (icon as HTMLElement).style.color = '#fff';
+                  });
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#fff1e6';
+                  e.currentTarget.style.color = '#fa8c16';
+                  e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                    (icon as HTMLElement).style.color = '#fa8c16';
+                  });
+                }}
+              >
+                上传身份证照片
+              </Button>
             </Upload>
           </Form.Item>
         </>
@@ -208,7 +235,34 @@ const Register: React.FC = () => {
             getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
           >
             <Upload {...uploadProps} maxCount={1}>
-              <Button icon={<UploadOutlined />}>上传地址证明照片</Button>
+              <Button
+                icon={<UploadOutlined />}
+                style={{
+                  height: '40px',
+                  fontSize: '16px',
+                  background: '#fff1e6',
+                  borderRadius: '8px',
+                  border: '1px solid #fa8c16',
+                  color: '#fa8c16',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#fa8c16';
+                  e.currentTarget.style.color = '#fff';
+                  e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                    (icon as HTMLElement).style.color = '#fff';
+                  });
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#fff1e6';
+                  e.currentTarget.style.color = '#fa8c16';
+                  e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                    (icon as HTMLElement).style.color = '#fa8c16';
+                  });
+                }}
+              >
+                上传地址证明照片
+              </Button>
             </Upload>
           </Form.Item>
         </>
@@ -230,107 +284,227 @@ const Register: React.FC = () => {
       title: '提交',
       content: (
         <div style={{ textAlign: 'center' }}>
-          <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '16px' }}>
+          <Text strong style={{ fontSize: '16px', color: '#595959', display: 'block', marginBottom: '16px' }}>
             请确认您的信息：
           </Text>
-          <div style={{ textAlign: 'left', marginBottom: '24px', padding: '16px', background: '#fff', borderRadius: '8px' }}>
-            <Text strong>基础信息</Text>
+          <div style={{ textAlign: 'left', marginBottom: '24px', padding: '16px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>
+            <Text strong style={{ color: '#595959' }}>基础信息</Text>
             <br />
-            <Text>姓名: {form.getFieldValue('name') || '未填写'}</Text>
+            <Text style={{ color: '#595959' }}>姓名: {form.getFieldValue('name') || '未填写'}</Text>
             <br />
-            <Text>邮箱: {form.getFieldValue('email') || '未填写'}</Text>
+            <Text style={{ color: '#595959' }}>邮箱: {form.getFieldValue('email') || '未填写'}</Text>
             <br />
-            <Text>电话: {form.getFieldValue('phone') || '未填写'}</Text>
-            <br />
-            <br />
-            <Text strong>钱包信息</Text>
-            <br />
-            <Text>钱包地址: {form.getFieldValue('walletAddress') || '未连接'}</Text>
+            <Text style={{ color: '#595959' }}>电话: {form.getFieldValue('phone') || '未填写'}</Text>
             <br />
             <br />
-            <Text strong>证件信息</Text>
+            <Text strong style={{ color: '#595959' }}>钱包信息</Text>
             <br />
-            <Text>身份证号: {form.getFieldValue('idNumber') || '未填写'}</Text>
+            <Text style={{ color: '#595959' }}>钱包地址: {form.getFieldValue('walletAddress') || '未连接'}</Text>
             <br />
-            <Text>
+            <br />
+            <Text strong style={{ color: '#595959' }}>证件信息</Text>
+            <br />
+            <Text style={{ color: '#595959' }}>身份证号: {form.getFieldValue('idNumber') || '未填写'}</Text>
+            <br />
+            <Text style={{ color: '#595959' }}>
               身份证照片: {form.getFieldValue('idPhoto')?.[0]?.name || '未上传'}
             </Text>
             <br />
             <br />
-            <Text strong>地址证明</Text>
+            <Text strong style={{ color: '#595959' }}>地址证明</Text>
             <br />
-            <Text>地址: {form.getFieldValue('address') || '未填写'}</Text>
+            <Text style={{ color: '#595959' }}>地址: {form.getFieldValue('address') || '未填写'}</Text>
             <br />
-            <Text>
+            <Text style={{ color: '#595959' }}>
               地址证明照片: {form.getFieldValue('addressProof')?.[0]?.name || '未上传'}
             </Text>
             <br />
             <br />
-            <Text strong>描述</Text>
+            <Text strong style={{ color: '#595959' }}>描述</Text>
             <br />
-            <Text>{form.getFieldValue('description') || '未填写'}</Text>
+            <Text style={{ color: '#595959' }}>{form.getFieldValue('description') || '未填写'}</Text>
           </div>
-          <Text>请确认您的信息无误，点击提交完成注册。</Text>
+          <Text style={{ color: '#595959' }}>请确认您的信息无误，点击提交完成注册。</Text>
         </div>
       ),
     },
   ];
 
   return (
-    <div style={{ padding: '40px', background: '#e6f7ff', textAlign: 'center' }}>
+    <div style={{ padding: '40px', background: '#e6f7ff', minHeight: '100vh' }}>
       <div
         style={{
           background: 'url("https://www.pngall.com/wp-content/uploads/2016/05/White-Paper-PNG-Clipart.png") no-repeat center',
           backgroundSize: 'contain',
-          height: '100px',
+          height: '120px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: '40px',
         }}
       >
-        <Title style={{ fontSize: '36px', color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
+        <Title style={{ fontSize: '40px', color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
           用户注册
         </Title>
       </div>
       <Row justify="center">
-        <Col span={12}>
-          <Steps current={currentStep} style={{ marginBottom: '40px' }}>
-            {steps.map(item => (
-              <Step key={item.title} title={item.title} />
-            ))}
-          </Steps>
-          <Form form={form} layout="vertical">
-            {steps[currentStep].content}
-          </Form>
-          <div style={{ marginTop: '24px' }}>
-            {currentStep > 0 && (
-              <Button style={{ marginRight: '8px' }} onClick={prevStep}>
-                上一步
-              </Button>
-            )}
-            {currentStep < steps.length - 1 && (
-              <Button type="primary" onClick={nextStep}>
-                下一步
-              </Button>
-            )}
-            {currentStep === steps.length - 1 && (
-              <Button
-                type="primary"
-                onClick={handleSubmit}
-                style={{
-                  background: 'linear-gradient(135deg, #ff4d4f, #ff7875)',
-                  border: 'none',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'linear-gradient(135deg, #ff7875, #ff4d4f)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'linear-gradient(135deg, #ff4d4f, #ff7875)')}
-              >
-                提交
-              </Button>
-            )}
+        <Col span={16}>
+          <div
+            style={{
+              background: '#fffbe6',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+              padding: '40px',
+            }}
+          >
+            <Steps
+              current={currentStep}
+              style={{ marginBottom: '40px' }}
+              items={steps.map(item => ({
+                title: item.title,
+              }))}
+              className="custom-steps"
+            />
+            <Form form={form} layout="vertical">
+              {steps[currentStep].content}
+            </Form>
+            <div style={{ marginTop: '24px', textAlign: 'center' }}>
+              {currentStep > 0 && (
+                <Button
+                  style={{
+                    height: '50px',
+                    fontSize: '16px',
+                    background: '#fff1e6',
+                    borderRadius: '8px',
+                    border: '1px solid #fa8c16',
+                    color: '#fa8c16',
+                    marginRight: '16px',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#fa8c16';
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#fff1e6';
+                    e.currentTarget.style.color = '#fa8c16';
+                  }}
+                  onClick={prevStep}
+                >
+                  上一步
+                </Button>
+              )}
+              {currentStep < steps.length - 1 && (
+                <Button
+                  style={{
+                    height: '50px',
+                    fontSize: '16px',
+                    background: '#fff1e6',
+                    borderRadius: '8px',
+                    border: '1px solid #fa8c16',
+                    color: '#fa8c16',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#fa8c16';
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#fff1e6';
+                    e.currentTarget.style.color = '#fa8c16';
+                  }}
+                  onClick={nextStep}
+                >
+                  下一步
+                </Button>
+              )}
+              {currentStep === steps.length - 1 && (
+                <Button
+                  style={{
+                    height: '50px',
+                    fontSize: '16px',
+                    background: 'linear-gradient(135deg, #fa8c16, #ff7875)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #ff7875, #fa8c16)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'linear-gradient(135deg, #fa8c16, #ff7875)';
+                  }}
+                  onClick={handleSubmit}
+                >
+                  提交
+                </Button>
+              )}
+            </div>
           </div>
         </Col>
       </Row>
+
+      {/* 自定义样式 */}
+      <style>{`
+        .custom-steps .ant-steps-item-title {
+          font-size: 16px !important;
+          font-weight: bold !important;
+          color: #595959 !important;
+        }
+        .custom-steps .ant-steps-item-process .ant-steps-item-icon {
+          background: #fa8c16 !important;
+          border-color: #fa8c16 !important;
+        }
+        .custom-steps .ant-steps-item-process .ant-steps-item-title {
+          color: #fa8c16 !important;
+        }
+        .custom-steps .ant-steps-item-wait .ant-steps-item-icon {
+          background: #d9d9d9 !important;
+          border-color: #d9d9d9 !important;
+        }
+        .custom-steps .ant-steps-item-wait .ant-steps-item-title {
+          color: #d9d9d9 !important;
+        }
+        .custom-steps .ant-steps-item-finish .ant-steps-item-icon {
+          background: #fa8c16 !important;
+          border-color: #fa8c16 !important;
+        }
+        .custom-steps .ant-steps-item-finish .ant-steps-item-title {
+          color: #fa8c16 !important;
+        }
+        .custom-steps .ant-steps-item-finish .ant-steps-item-tail::after {
+          background: #fa8c16 !important;
+        }
+        .ant-form-item-label > label {
+          font-size: 16px !important;
+          color: #595959 !important;
+        }
+        .ant-input,
+        .ant-input-affix-wrapper,
+        .ant-input-textarea {
+          background: #fff !important;
+          border: 1px solid #d9d9d9 !important;
+          border-radius: 8px !important;
+          height: 40px !important;
+          font-size: 16px !important;
+          transition: all 0.3s ease !important;
+        }
+        .ant-input:hover,
+        .ant-input-affix-wrapper:hover,
+        .ant-input-textarea:hover {
+          border-color: #fa8c16 !important;
+        }
+        .ant-input:focus,
+        .ant-input-affix-wrapper:focus,
+        .ant-input-textarea:focus {
+          border-color: #fa8c16 !important;
+          box-shadow: 0 0 0 2px rgba(250, 140, 22, 0.2) !important;
+        }
+        .ant-input-textarea {
+          height: auto !important;
+        }
+      `}</style>
     </div>
   );
 };

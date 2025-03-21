@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Dropdown, message } from 'antd';
+import { Layout, Menu, Button, Dropdown, message, Modal, Row, Col, Typography } from 'antd';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { DownOutlined } from '@ant-design/icons';
+import { WalletOutlined, MailOutlined, DownOutlined } from '@ant-design/icons';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
 import type { MenuProps } from 'antd';
 
 const { Header } = Layout;
+const { Text } = Typography;
 
 // 菜单项定义
 const menuItems = [
@@ -38,11 +40,13 @@ const getVisibleMenuItems = (role: Role) => {
 const Navbar: React.FC = () => {
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
+  const { open } = useWeb3Modal();
   const location = useLocation();
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState<Role>('unlogged');
   const [selectedKey, setSelectedKey] = useState<string>('0');
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // 新增状态控制登录显示
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoginModalVisible, setIsLoginModalVisible] = useState(false); // 控制登录弹框
 
   // 根据路径设置默认选中项
   useEffect(() => {
@@ -57,12 +61,10 @@ const Navbar: React.FC = () => {
 
   // 检查登录状态
   useEffect(() => {
-    // 仅在非注册页面（/register）时更新登录状态
     if (location.pathname !== '/register') {
       const phoneLogin = localStorage.getItem('phoneLogin');
       setIsLoggedIn(isConnected || !!phoneLogin);
     } else {
-      // 在注册页面时，强制不显示登录状态
       setIsLoggedIn(false);
     }
   }, [isConnected, location.pathname]);
@@ -85,6 +87,35 @@ const Navbar: React.FC = () => {
     setUserRole('unlogged');
     setIsLoggedIn(false);
     message.success('已退出登录');
+  };
+
+  const showLoginModal = () => {
+    setIsLoginModalVisible(true);
+  };
+
+  const handleWalletConnect = () => {
+    open();
+    setIsLoginModalVisible(false); // 连接钱包后关闭弹框
+  };
+
+  const handlePhoneLogin = () => {
+    const phone = prompt('请输入手机号码：');
+    if (phone && /^\d{11}$/.test(phone)) {
+      localStorage.setItem('phoneLogin', phone);
+      // Mock 登录后随机分配角色（测试用）
+      const roles = ['user', 'issuer', 'admin'] as const;
+      const randomRole = roles[Math.floor(Math.random() * roles.length)];
+      setUserRole(randomRole);
+      setIsLoggedIn(true);
+      setIsLoginModalVisible(false);
+      message.success(`手机登录成功，角色分配为：${randomRole}`);
+    } else {
+      message.error('请输入有效的11位手机号码');
+    }
+  };
+
+  const handleCancelLogin = () => {
+    setIsLoginModalVisible(false);
   };
 
   // 点击菜单项时更新 selectedKey 并跳转
@@ -138,7 +169,7 @@ const Navbar: React.FC = () => {
         selectedKeys={[selectedKey]}
         style={{
           flex: 1,
-          minWidth: 0,
+          minWidth: '0',
           fontSize: '16px',
         }}
         items={visibleMenuItems.map(item => ({
@@ -171,7 +202,7 @@ const Navbar: React.FC = () => {
           <>
             <Button
               type="primary"
-              onClick={() => navigate('/login')}
+              onClick={showLoginModal}
               style={{ fontSize: '16px', marginRight: '10px' }}
             >
               登录
@@ -186,6 +217,104 @@ const Navbar: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* 登录选择模态框 */}
+      <Modal
+        open={isLoginModalVisible}
+        onCancel={handleCancelLogin}
+        footer={null}
+        centered
+        style={{
+          borderRadius: '5px',
+        }}
+        bodyStyle={{
+          background: '#fffbe6', // 浅黄色背景
+          padding: '30px',
+          borderRadius: '5px',
+        }}
+      >
+        <Text style={{ fontSize: '16px', color: '#595959', display: 'block', marginBottom: '24px', textAlign: 'center' }}>
+          请连接钱包或使用手机号码登录以访问更多功能
+        </Text>
+        <Row gutter={[16, 16]} justify="center">
+          <Col span={24}>
+            <Button
+              type="default"
+              block
+              icon={<WalletOutlined />}
+              style={{
+                height: '50px',
+                fontSize: '16px',
+                background: '#fff1e6', // 浅橙色背景
+                borderRadius: '8px',
+                border: '1px solid #fa8c16', // 橙色边框
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 16px',
+                color: '#fa8c16', // 文字颜色
+                transition: 'all 0.3s ease', // 动画过渡
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#fa8c16';
+                e.currentTarget.style.color = '#fff';
+                e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                  (icon as HTMLElement).style.color = '#fff';
+                });
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#fff1e6';
+                e.currentTarget.style.color = '#fa8c16';
+                e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                  (icon as HTMLElement).style.color = '#fa8c16';
+                });
+              }}
+              onClick={handleWalletConnect}
+            >
+              连接钱包
+              <WalletOutlined style={{ color: '#fa8c16' }} />
+            </Button>
+          </Col>
+          <Col span={24}>
+            <Button
+              type="default"
+              block
+              icon={<MailOutlined />}
+              style={{
+                height: '50px',
+                fontSize: '16px',
+                background: '#fff1e6', // 浅橙色背景
+                borderRadius: '8px',
+                border: '1px solid #fa8c16', // 橙色边框
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 16px',
+                color: '#fa8c16', // 文字颜色
+                transition: 'all 0.3s ease', // 动画过渡
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#fa8c16';
+                e.currentTarget.style.color = '#fff';
+                e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                  (icon as HTMLElement).style.color = '#fff';
+                });
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#fff1e6';
+                e.currentTarget.style.color = '#fa8c16';
+                e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                  (icon as HTMLElement).style.color = '#fa8c16';
+                });
+              }}
+              onClick={handlePhoneLogin}
+            >
+              邮箱登录
+              <MailOutlined style={{ color: '#fa8c16' }} />
+            </Button>
+          </Col>
+        </Row>
+      </Modal>
     </Header>
   );
 };

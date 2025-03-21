@@ -4,7 +4,7 @@ import { Layout, ConfigProvider, Typography } from 'antd';
 import Home from './pages/Home';
 import PollDetail from './pages/PollDetail';
 import Navbar from './components/Navbar';
-import Login from './pages/Login';
+import Login from './components/Login';
 import Register from './pages/Register'; // 新增
 import PollMain from './pages/PollMain';
 import LotteryManagement from './pages/LotteryManagement';
