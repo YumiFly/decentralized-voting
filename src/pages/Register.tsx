@@ -2,11 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
-import { Steps, Form, Input, Upload, Button, message, Typography, Row, Col, Card } from 'antd';
+import { Steps, Form, Input, Upload, Button, message, Typography, Row, Col, Card, DatePicker, Select } from 'antd';
 import { UploadOutlined, WalletOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import './Register.css';
 
 const { Step } = Steps;
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -68,6 +71,11 @@ const Register: React.FC = () => {
     });
   };
 
+  // 自定义日期选择限制（18岁以上）
+  const disabledDate = (current: dayjs.Dayjs) => {
+    return current && current > dayjs().subtract(18, 'years').endOf('day');
+  };
+
   // 步骤内容
   const steps = [
     {
@@ -82,11 +90,40 @@ const Register: React.FC = () => {
             <Input placeholder="请输入您的姓名" />
           </Form.Item>
           <Form.Item
-            name="email"
-            label="邮箱"
-            rules={[{ required: true, type: 'email', message: '请输入有效的邮箱地址！' }]}
+            name="birthDate"
+            label="出生日期"
+            rules={[{ required: true, message: '请选择您的出生日期！' }]}
           >
-            <Input placeholder="请输入您的邮箱" />
+            <DatePicker
+              style={{ width: '100%', height: '40px', borderRadius: '8px' }}
+              placeholder="请选择出生日期"
+              disabledDate={disabledDate}
+              format="YYYY-MM-DD"
+            />
+          </Form.Item>
+          <Form.Item
+            name="nationality"
+            label="国籍"
+            rules={[{ required: true, message: '请选择您的国籍！' }]}
+          >
+            <Select placeholder="请选择您的国籍">
+              <Option value="CN">中国</Option>
+              <Option value="US">美国</Option>
+              <Option value="JP">日本</Option>
+              <Option value="KR">韩国</Option>
+              <Option value="GB">英国</Option>
+              <Option value="FR">法国</Option>
+              <Option value="DE">德国</Option>
+              <Option value="AU">澳大利亚</Option>
+              {/* 可根据需求添加更多国家 */}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="address"
+            label="居住地址"
+            rules={[{ required: true, message: '请输入您的地址！' }]}
+          >
+            <Input placeholder="请输入您的地址" />
           </Form.Item>
           <Form.Item
             name="phone"
@@ -94,6 +131,42 @@ const Register: React.FC = () => {
             rules={[{ required: true, pattern: /^\d{11}$/, message: '请输入有效的11位手机号码！' }]}
           >
             <Input placeholder="请输入您的电话号码" />
+          </Form.Item>
+          <Form.Item
+            name="email"
+            label="邮箱"
+            rules={[{ required: true, type: 'email', message: '请输入有效的邮箱地址！' }]}
+          >
+            <Input placeholder="请输入您的邮箱" />
+          </Form.Item>
+          <Form.Item
+            name="occupation"
+            label="职业"
+            rules={[{ required: true, message: '请选择您的职业！' }]}
+          >
+            <Select placeholder="请选择您的职业">
+              <Option value="engineer">工程师</Option>
+              <Option value="teacher">教师</Option>
+              <Option value="doctor">医生</Option>
+              <Option value="student">学生</Option>
+              <Option value="business">商人</Option>
+              <Option value="freelancer">自由职业者</Option>
+              <Option value="other">其他</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="fundSource"
+            label="资金来源"
+            rules={[{ required: true, message: '请选择您的资金来源！' }]}
+          >
+            <Select placeholder="请选择您的资金来源">
+              <Option value="salary">工资</Option>
+              <Option value="investment">投资</Option>
+              <Option value="savings">储蓄</Option>
+              <Option value="business">商业收入</Option>
+              <Option value="inheritance">遗产</Option>
+              <Option value="other">其他</Option>
+            </Select>
           </Form.Item>
         </>
       ),
@@ -218,19 +291,12 @@ const Register: React.FC = () => {
       ),
     },
     {
-      title: '地址证明',
+      title: '居住地址证明',
       content: (
         <>
           <Form.Item
-            name="address"
-            label="地址"
-            rules={[{ required: true, message: '请输入您的地址！' }]}
-          >
-            <Input placeholder="请输入您的地址" />
-          </Form.Item>
-          <Form.Item
             name="addressProof"
-            label="地址证明照片"
+            label="居住地址证明照片（包括水电单或者银行业务地址信息等）"
             rules={[{ required: true, message: '请上传地址证明照片！' }]}
             getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
           >
@@ -292,9 +358,21 @@ const Register: React.FC = () => {
             <br />
             <Text style={{ color: '#595959' }}>姓名: {form.getFieldValue('name') || '未填写'}</Text>
             <br />
-            <Text style={{ color: '#595959' }}>邮箱: {form.getFieldValue('email') || '未填写'}</Text>
+            <Text style={{ color: '#595959' }}>
+              出生日期: {form.getFieldValue('birthDate') ? dayjs(form.getFieldValue('birthDate')).format('YYYY-MM-DD') : '未填写'}
+            </Text>
+            <br />
+            <Text style={{ color: '#595959' }}>国籍: {form.getFieldValue('nationality') || '未填写'}</Text>
+            <br />
+            <Text style={{ color: '#595959' }}>地址: {form.getFieldValue('address') || '未填写'}</Text>
             <br />
             <Text style={{ color: '#595959' }}>电话: {form.getFieldValue('phone') || '未填写'}</Text>
+            <br />
+            <Text style={{ color: '#595959' }}>邮箱: {form.getFieldValue('email') || '未填写'}</Text>
+            <br />
+            <Text style={{ color: '#595959' }}>职业: {form.getFieldValue('occupation') || '未填写'}</Text>
+            <br />
+            <Text style={{ color: '#595959' }}>资金来源: {form.getFieldValue('fundSource') || '未填写'}</Text>
             <br />
             <br />
             <Text strong style={{ color: '#595959' }}>钱包信息</Text>
@@ -312,8 +390,6 @@ const Register: React.FC = () => {
             <br />
             <br />
             <Text strong style={{ color: '#595959' }}>地址证明</Text>
-            <br />
-            <Text style={{ color: '#595959' }}>地址: {form.getFieldValue('address') || '未填写'}</Text>
             <br />
             <Text style={{ color: '#595959' }}>
               地址证明照片: {form.getFieldValue('addressProof')?.[0]?.name || '未上传'}
@@ -444,67 +520,6 @@ const Register: React.FC = () => {
           </div>
         </Col>
       </Row>
-
-      {/* 自定义样式 */}
-      <style>{`
-        .custom-steps .ant-steps-item-title {
-          font-size: 16px !important;
-          font-weight: bold !important;
-          color: #595959 !important;
-        }
-        .custom-steps .ant-steps-item-process .ant-steps-item-icon {
-          background: #fa8c16 !important;
-          border-color: #fa8c16 !important;
-        }
-        .custom-steps .ant-steps-item-process .ant-steps-item-title {
-          color: #fa8c16 !important;
-        }
-        .custom-steps .ant-steps-item-wait .ant-steps-item-icon {
-          background: #d9d9d9 !important;
-          border-color: #d9d9d9 !important;
-        }
-        .custom-steps .ant-steps-item-wait .ant-steps-item-title {
-          color: #d9d9d9 !important;
-        }
-        .custom-steps .ant-steps-item-finish .ant-steps-item-icon {
-          background: #fa8c16 !important;
-          border-color: #fa8c16 !important;
-        }
-        .custom-steps .ant-steps-item-finish .ant-steps-item-title {
-          color: #fa8c16 !important;
-        }
-        .custom-steps .ant-steps-item-finish .ant-steps-item-tail::after {
-          background: #fa8c16 !important;
-        }
-        .ant-form-item-label > label {
-          font-size: 16px !important;
-          color: #595959 !important;
-        }
-        .ant-input,
-        .ant-input-affix-wrapper,
-        .ant-input-textarea {
-          background: #fff !important;
-          border: 1px solid #d9d9d9 !important;
-          border-radius: 8px !important;
-          height: 40px !important;
-          font-size: 16px !important;
-          transition: all 0.3s ease !important;
-        }
-        .ant-input:hover,
-        .ant-input-affix-wrapper:hover,
-        .ant-input-textarea:hover {
-          border-color: #fa8c16 !important;
-        }
-        .ant-input:focus,
-        .ant-input-affix-wrapper:focus,
-        .ant-input-textarea:focus {
-          border-color: #fa8c16 !important;
-          box-shadow: 0 0 0 2px rgba(250, 140, 22, 0.2) !important;
-        }
-        .ant-input-textarea {
-          height: auto !important;
-        }
-      `}</style>
     </div>
   );
 };
