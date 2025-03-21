@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
-import { Button, Row, Col, Typography, message } from 'antd';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAccount, useDisconnect } from 'wagmi';
-import { useNavigate } from 'react-router-dom';
-import { WalletOutlined, MailOutlined } from '@ant-design/icons';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { Row, Col, Typography, Button, message } from 'antd';
+import { WalletOutlined, MailOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
 const Login: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
   const { open } = useWeb3Modal();
-  const navigate = useNavigate();
   const [phoneLogin, setPhoneLogin] = useState<string | null>(localStorage.getItem('phoneLogin'));
 
-  if (isConnected || phoneLogin) {
+  // 仅在登录页面（/login）时自动跳转
+  if ((isConnected || phoneLogin) && location.pathname === '/login') {
     navigate('/');
   }
 
@@ -35,13 +37,27 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '40px', textAlign: 'center' }}>
-      <Title level={2}>Welcome to 彩蛋娱乐</Title>
+    <div style={{ padding: '40px', background: '#e6f7ff', textAlign: 'center' }}>
+      <div
+        style={{
+          background: 'url("https://www.pngall.com/wp-content/uploads/2016/05/White-Paper-PNG-Clipart.png") no-repeat center',
+          backgroundSize: 'contain',
+          height: '100px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '40px',
+        }}
+      >
+        <Title style={{ fontSize: '36px', color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
+          欢迎来到彩蛋娱乐
+        </Title>
+      </div>
       <Text style={{ fontSize: '16px', color: '#666' }}>
         请连接钱包或使用手机号码登录以访问更多功能
       </Text>
       <Row gutter={[16, 16]} justify="center" style={{ marginTop: '40px' }}>
-        <Col span={24}>
+        <Col span={12}>
           <Button
             type="default"
             block
@@ -58,11 +74,11 @@ const Login: React.FC = () => {
             }}
             onClick={handleWalletConnect}
           >
-            Connect Wallet
+            连接钱包
             <WalletOutlined />
           </Button>
         </Col>
-        <Col span={24}>
+        <Col span={12}>
           <Button
             type="default"
             block
@@ -79,7 +95,7 @@ const Login: React.FC = () => {
             }}
             onClick={handlePhoneLogin}
           >
-            Email Login
+            邮箱登录
             <MailOutlined />
           </Button>
         </Col>

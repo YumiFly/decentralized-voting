@@ -4,7 +4,8 @@ import { Layout, ConfigProvider, Typography } from 'antd';
 import Home from './pages/Home';
 import PollDetail from './pages/PollDetail';
 import Navbar from './components/Navbar';
-import Login from './components/Login';
+import Login from './pages/Login';
+import Register from './pages/Register'; // 新增
 import PollMain from './pages/PollMain';
 import LotteryManagement from './pages/LotteryManagement';
 import Lottery from './pages/Lottery';
@@ -29,6 +30,7 @@ function App() {
           <Content style={{ padding: '20px', flex: 1 }}>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} /> {/* 新增 */}
               <Route path="/" element={<Home />} />
               <Route path="/poll/:pollIndex" element={<PollDetail />} />
               <Route path="/lottery" element={<Lottery />} />
