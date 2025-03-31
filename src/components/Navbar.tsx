@@ -214,6 +214,13 @@ const Navbar: React.FC = () => {
             >
               注册
             </Button>
+            {/* <Button
+              type="default"
+              onClick={() => navigate('/calendar-diary')}
+              style={{ fontSize: '16px' }}
+            >
+              测试
+            </Button> */}
           </>
         )}
       </div>

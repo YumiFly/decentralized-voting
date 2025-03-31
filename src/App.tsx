@@ -15,6 +15,7 @@ import Governance from './pages/Governance';
 import Wallet from './pages/Wallet';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import CalendarDiary from './pages/CalendarDiary';
 
 const { Header, Content, Footer } = Layout;
 const { Text } = Typography;
@@ -30,6 +31,7 @@ function App() {
           <Content style={{ padding: '20px', flex: 1 }}>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/calendar-diary" element={<CalendarDiary />} /> {/* 新增 */}
               <Route path="/register" element={<Register />} /> {/* 新增 */}
               <Route path="/" element={<Home />} />
               <Route path="/poll/:pollIndex" element={<PollDetail />} />

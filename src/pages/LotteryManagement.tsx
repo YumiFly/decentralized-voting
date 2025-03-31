@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Space, message, Typography, Spin } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useAccount, useDisconnect } from 'wagmi';
-import './LotteryManagement.css';
+import '../css/LotteryManagement.css';
 
 const { Title, Text } = Typography;
 const { Option } = Select;

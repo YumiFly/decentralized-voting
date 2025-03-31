@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Row, Col, Card, Typography, Space, Table, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import './Home.css';
+import '../css/Home.css';
 
 const { Title, Text } = Typography;
 
@@ -86,24 +86,6 @@ const Home: React.FC = () => {
 
   return (
     <div style={{ padding: '40px', background: '#e6f7ff' }}>
-      {/* 标题 */}
-      {/* <div
-        style={{
-          background: 'url("https://www.pngall.com/wp-content/uploads/2016/05/White-Paper-PNG-Clipart.png") no-repeat center',
-          backgroundSize: 'contain',
-          height: '100px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '40px',
-        }}
-      >
-        <Title style={{ fontSize: '36px', color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
-          彩蛋娱乐彩票
-        </Title>
-      </div> */}
-
-      {/* 分类 */}
       <Space size="large" style={{ marginBottom: '40px', display: 'flex', justifyContent: 'center' }}>
         {lotteryCategories.map(category => (
           <div
