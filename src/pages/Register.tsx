@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAccount, useDisconnect } from 'wagmi';
-import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { useAccount } from 'wagmi';
 import { Steps, Form, Input, Upload, Button, message, Typography, Row, Col, Card, DatePicker, Select, Spin } from 'antd';
-import { UploadOutlined, WalletOutlined } from '@ant-design/icons';
+import { UploadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { uploadPhoto, registerCustomer, CustomerRequest } from '../api/customerApi';
+import { uploadPhoto, registerCustomer, CustomerRequest } from '../api/customer';
 import '../css/Register.css';
 
 const { Step } = Steps;
@@ -15,11 +14,19 @@ const { Option } = Select;
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const { address, isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
-  const { open } = useWeb3Modal();
   const [currentStep, setCurrentStep] = useState(0);
   const [form] = Form.useForm();
   const [uploading, setUploading] = useState(false);
+
+  // 检查是否已连接钱包，未连接则跳转到登录页面
+  React.useEffect(() => {
+    if (!isConnected || !address) {
+      message.warning('请先连接钱包！');
+      navigate('/login');
+    } else {
+      form.setFieldsValue({ customer_address: address });
+    }
+  }, [isConnected, address, form, navigate]);
 
   // 文件上传逻辑
   const uploadProps = {
@@ -27,9 +34,9 @@ const Register: React.FC = () => {
       try {
         setUploading(true);
         const fileUrl = await uploadPhoto(file);
-        form.setFieldsValue({ file_path: fileUrl }); // 将上传后的 URL 保存到表单
+        form.setFieldsValue({ file_path: fileUrl });
         message.success(`${file.name} 上传成功`);
-        return false; // 阻止自动上传，实际已通过接口上传
+        return false;
       } catch (error) {
         message.error('上传照片失败，请重试！');
         return false;
@@ -40,30 +47,9 @@ const Register: React.FC = () => {
     maxCount: 1,
   };
 
-  // 连接钱包
-  const handleConnectWallet = () => {
-    if (!isConnected) {
-      open(); // 打开钱包选择弹框
-    } else {
-      disconnect(); // 断开钱包连接
-      form.setFieldsValue({ customer_address: undefined }); // 清空钱包地址
-    }
-  };
-
-  // 连接钱包后更新表单
-  React.useEffect(() => {
-    if (isConnected && address) {
-      form.setFieldsValue({ customer_address: address });
-    }
-  }, [isConnected, address, form]);
-
   // 下一步
   const nextStep = () => {
     form.validateFields().then(() => {
-      if (currentStep === 1 && !form.getFieldValue('customer_address')) {
-        message.warning('请先连接钱包！');
-        return;
-      }
       setCurrentStep(currentStep + 1);
     });
   };
@@ -79,7 +65,6 @@ const Register: React.FC = () => {
       const values = await form.validateFields();
       const currentTime = dayjs().toISOString();
 
-      // 构造后端接口所需的数据
       const customerData: CustomerRequest = {
         customer_address: values.customer_address,
         is_verified: false,
@@ -96,25 +81,21 @@ const Register: React.FC = () => {
           residential_address: values.residential_address,
           phone_number: values.phone_number,
           email: values.email,
-          document_type: 'ID Card', // 假设为身份证，可根据需求调整
+          document_type: 'ID Card',
           document_number: values.document_number,
           file_path: values.file_path,
           submission_date: currentTime,
-          risk_level: 'Low', // 假设风险等级为低，可根据需求调整
+          risk_level: 'Low',
           source_of_funds: values.source_of_funds,
           occupation: values.occupation,
         },
         kyc_verifications: [],
       };
 
-      // 调用后端接口提交注册信息
       await registerCustomer(customerData);
-
-      // 提交成功后的操作
-      disconnect();
-      form.setFieldsValue({ customer_address: undefined });
-      message.success('注册成功！当前 KYC 待审批，3 个工作日内审批通过后会通知您。');
-      navigate('/');
+      form.resetFields();
+      message.success('注册成功！当前 KYC 待审批，3 个工作日内审批通过后会通知您。到时您也可以通过重新登录查看 KYC 状态。');
+      navigate('/home');
     } catch (error) {
       message.error('注册失败，请稍后重试！');
     }
@@ -125,24 +106,16 @@ const Register: React.FC = () => {
     return current && current > dayjs().subtract(18, 'years').endOf('day');
   };
 
-  // 步骤内容
+  // 步骤内容（移除“连接钱包”步骤）
   const steps = [
     {
       title: '基础信息',
       content: (
         <>
-          <Form.Item
-            name="name"
-            label="姓名"
-            rules={[{ required: true, message: '请输入您的姓名！' }]}
-          >
+          <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入您的姓名！' }]}>
             <Input placeholder="请输入您的姓名" />
           </Form.Item>
-          <Form.Item
-            name="birth_date"
-            label="出生日期"
-            rules={[{ required: true, message: '请选择您的出生日期！' }]}
-          >
+          <Form.Item name="birth_date" label="出生日期" rules={[{ required: true, message: '请选择您的出生日期！' }]}>
             <DatePicker
               style={{ width: '100%', height: '40px', borderRadius: '8px' }}
               placeholder="请选择出生日期"
@@ -150,11 +123,7 @@ const Register: React.FC = () => {
               format="YYYY-MM-DD"
             />
           </Form.Item>
-          <Form.Item
-            name="nationality"
-            label="国籍"
-            rules={[{ required: true, message: '请选择您的国籍！' }]}
-          >
+          <Form.Item name="nationality" label="国籍" rules={[{ required: true, message: '请选择您的国籍！' }]}>
             <Select placeholder="请选择您的国籍">
               <Option value="CN">中国</Option>
               <Option value="US">美国</Option>
@@ -180,18 +149,10 @@ const Register: React.FC = () => {
           >
             <Input placeholder="请输入您的电话号码" />
           </Form.Item>
-          <Form.Item
-            name="email"
-            label="邮箱"
-            rules={[{ required: true, type: 'email', message: '请输入有效的邮箱地址！' }]}
-          >
+          <Form.Item name="email" label="邮箱" rules={[{ required: true, type: 'email', message: '请输入有效的邮箱地址！' }]}>
             <Input placeholder="请输入您的邮箱" />
           </Form.Item>
-          <Form.Item
-            name="occupation"
-            label="职业"
-            rules={[{ required: true, message: '请选择您的职业！' }]}
-          >
+          <Form.Item name="occupation" label="职业" rules={[{ required: true, message: '请选择您的职业！' }]}>
             <Select placeholder="请选择您的职业">
               <Option value="engineer">工程师</Option>
               <Option value="teacher">教师</Option>
@@ -202,11 +163,7 @@ const Register: React.FC = () => {
               <Option value="other">其他</Option>
             </Select>
           </Form.Item>
-          <Form.Item
-            name="source_of_funds"
-            label="资金来源"
-            rules={[{ required: true, message: '请选择您的资金来源！' }]}
-          >
+          <Form.Item name="source_of_funds" label="资金来源" rules={[{ required: true, message: '请选择您的资金来源！' }]}>
             <Select placeholder="请选择您的资金来源">
               <Option value="salary">工资</Option>
               <Option value="investment">投资</Option>
@@ -220,82 +177,13 @@ const Register: React.FC = () => {
       ),
     },
     {
-      title: '连接钱包',
-      content: (
-        <div style={{ textAlign: 'center' }}>
-          <Form.Item
-            name="customer_address"
-            label="钱包地址"
-            rules={[{ required: true, message: '请连接钱包！' }]}
-          >
-            {isConnected && address ? (
-              <Card
-                style={{
-                  margin: '0 auto',
-                  maxWidth: '400px',
-                  borderRadius: '8px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                  background: '#fff',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', padding: '8px' }}>
-                  <WalletOutlined style={{ fontSize: '24px', color: '#fa8c16', marginRight: '8px' }} />
-                  <Text style={{ fontSize: '16px', color: '#595959' }}>
-                    {address.slice(0, 6)}...{address.slice(-4)}
-                  </Text>
-                </div>
-              </Card>
-            ) : (
-              <Text type="secondary">请连接钱包以获取地址</Text>
-            )}
-          </Form.Item>
-          <Button
-            block
-            style={{
-              height: '50px',
-              fontSize: '16px',
-              background: '#fff1e6',
-              borderRadius: '8px',
-              border: '1px solid #fa8c16',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto',
-              maxWidth: '300px',
-              color: '#fa8c16',
-              transition: 'all 0.3s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#fa8c16';
-              e.currentTarget.style.color = '#fff';
-              e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
-                (icon as HTMLElement).style.color = '#fff';
-              });
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#fff1e6';
-              e.currentTarget.style.color = '#fa8c16';
-              e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
-                (icon as HTMLElement).style.color = '#fa8c16';
-              });
-            }}
-            onClick={handleConnectWallet}
-          >
-            <WalletOutlined style={{ marginRight: '8px', color: '#fa8c16' }} />
-            {isConnected ? '断开钱包' : '连接钱包'}
-          </Button>
-        </div>
-      ),
-    },
-    {
       title: '证件信息',
       content: (
         <>
-          <Form.Item
-            name="document_number"
-            label="证件号码"
-            rules={[{ required: true, message: '请输入您的证件号码！' }]}
-          >
+          <Form.Item name="customer_address" label="钱包地址" rules={[{ required: true, message: '钱包地址不可为空！' }]}>
+            <Input disabled value={address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''} />
+          </Form.Item>
+          <Form.Item name="document_number" label="证件号码" rules={[{ required: true, message: '请输入您的证件号码！' }]}>
             <Input placeholder="请输入您的证件号码" />
           </Form.Item>
           <Form.Item
@@ -319,14 +207,14 @@ const Register: React.FC = () => {
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = '#fa8c16';
                   e.currentTarget.style.color = '#fff';
-                  e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                  e.currentTarget.querySelectorAll('.anticon').forEach((icon) => {
                     (icon as HTMLElement).style.color = '#fff';
                   });
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = '#fff1e6';
                   e.currentTarget.style.color = '#fa8c16';
-                  e.currentTarget.querySelectorAll('.anticon').forEach(icon => {
+                  e.currentTarget.querySelectorAll('.anticon').forEach((icon) => {
                     (icon as HTMLElement).style.color = '#fa8c16';
                   });
                 }}
@@ -346,7 +234,16 @@ const Register: React.FC = () => {
           <Text strong style={{ fontSize: '16px', color: '#595959', display: 'block', marginBottom: '16px' }}>
             请确认您的信息：
           </Text>
-          <div style={{ textAlign: 'left', marginBottom: '24px', padding: '16px', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>
+          <div
+            style={{
+              textAlign: 'left',
+              marginBottom: '24px',
+              padding: '16px',
+              background: '#fff',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            }}
+          >
             <Text strong style={{ color: '#595959' }}>基础信息</Text>
             <br />
             <Text style={{ color: '#595959' }}>姓名: {form.getFieldValue('name') || '未填写'}</Text>
@@ -368,18 +265,13 @@ const Register: React.FC = () => {
             <Text style={{ color: '#595959' }}>资金来源: {form.getFieldValue('source_of_funds') || '未填写'}</Text>
             <br />
             <br />
-            <Text strong style={{ color: '#595959' }}>钱包信息</Text>
+            <Text strong style={{ color: '#595959' }}>证件信息</Text>
             <br />
             <Text style={{ color: '#595959' }}>钱包地址: {form.getFieldValue('customer_address') || '未连接'}</Text>
             <br />
-            <br />
-            <Text strong style={{ color: '#595959' }}>证件信息</Text>
-            <br />
             <Text style={{ color: '#595959' }}>证件号码: {form.getFieldValue('document_number') || '未填写'}</Text>
             <br />
-            <Text style={{ color: '#595959' }}>
-              证件照片: {form.getFieldValue('file_path') || '未上传'}
-            </Text>
+            <Text style={{ color: '#595959' }}>证件照片: {form.getFieldValue('file_path') || '未上传'}</Text>
             <br />
           </div>
           <Text style={{ color: '#595959' }}>请确认您的信息无误，点击提交完成注册。</Text>
@@ -401,9 +293,7 @@ const Register: React.FC = () => {
           marginBottom: '40px',
         }}
       >
-        <Title style={{ fontSize: '40px', color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
-          用户注册
-        </Title>
+        <Title style={{ fontSize: '40px', color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>用户注册</Title>
       </div>
       <Row justify="center">
         <Col span={16}>
@@ -418,9 +308,7 @@ const Register: React.FC = () => {
             <Steps
               current={currentStep}
               style={{ marginBottom: '40px' }}
-              items={steps.map(item => ({
-                title: item.title,
-              }))}
+              items={steps.map((item) => ({ title: item.title }))}
               className="custom-steps"
             />
             <Form form={form} layout="vertical">

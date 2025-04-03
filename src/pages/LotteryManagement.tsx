@@ -177,33 +177,8 @@ const LotteryManagement: React.FC = () => {
     message.success(`彩票 ID ${id} 已销毁！`);
   };
 
-//   // 退出登录
-//   const handleLogout = () => {
-//     disconnect();
-//     localStorage.removeItem('userRole');
-//     setUserRole('unlogged');
-//     navigate('/');
-//     message.success('已退出登录');
-//   };
-
   return (
     <div style={{ padding: '40px', background: '#e6f7ff' }}>
-      {/* 标题 */}
-      {/* <div
-        style={{
-          background: 'url("https://www.pngall.com/wp-content/uploads/2016/05/White-Paper-PNG-Clipart.png") no-repeat center',
-          backgroundSize: 'contain',
-          height: '100px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '40px',
-        }}
-      >
-        <Title style={{ fontSize: '36px', color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
-          彩票管理
-        </Title>
-      </div> */}
 
       {/* 彩票列表 */}
       <div style={{ marginBottom: '16px', textAlign: 'right' }}>
@@ -231,27 +206,6 @@ const LotteryManagement: React.FC = () => {
         >
           注册彩票
         </Button>
-        {/* <Button
-          onClick={handleLogout}
-          style={{
-            marginLeft: '16px',
-            background: '#d9d9d9',
-            borderColor: '#d9d9d9',
-            borderRadius: '12px',
-            padding: '8px 24px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            transition: 'all 0.3s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#bfbfbf';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#d9d9d9';
-          }}
-        >
-          退出登录
-        </Button>*/}
       </div> 
       <Table
         columns={columns}
@@ -327,24 +281,6 @@ const LotteryManagement: React.FC = () => {
           >
             <Input.TextArea placeholder="请输入彩票描述" />
           </Form.Item>
-
-          {/* <Form.Item
-            name="template"
-            label={<Text strong>样式模版</Text>}
-            rules={[{ required: true, message: '请选择样式模版！' }]}
-          >
-            <Select placeholder="选择样式模版">
-              {styleTemplates.map((template, index) => (
-                <Option key={index} value={template}>
-                  <Space>
-                    <span style={{ color: template.color }}>{template.icon}</span>
-                    {template.label}
-                  </Space>
-                </Option>
-              ))}
-            </Select>
-          </Form.Item> */}
-
           <Form.Item>
             <Space style={{ width: '100%', justifyContent: 'space-between' }}>
               <Button

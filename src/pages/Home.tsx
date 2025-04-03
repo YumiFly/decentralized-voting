@@ -1,60 +1,63 @@
 import React, { useEffect, useState } from 'react';
 import { Row, Col, Card, Typography, Space, Table, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { getLotteryTypes, getLotteries, getPrizePool, LotteryType, Lottery } from '../api/lottery';
 import '../css/Home.css';
 
 const { Title, Text } = Typography;
 
-// 彩票分类数据
-const lotteryCategories = [
-  { name: '即开型', color: '#fadb14' }, // 黄色
-  { name: '乐透型', color: '#ff4d4f' }, // 红色
-  { name: '数字型', color: '#1890ff' }, // 蓝色
-  { name: '基诺型', color: '#eb2f96' }, // 紫色
-];
-
-// 彩票类型数据（与 Lottery.tsx 保持一致）
-const lotteries = [
-  { id: 1, name: '双色球', category: '乐透型', color: '#ff4d4f', icon: '🎰', route: 'shuangseqiu', description: '6红+1蓝，每周二、四、日开奖', price: 2 },
-  { id: 2, name: '七乐彩', category: '乐透型', color: '#fa8c16', icon: '🌟', route: 'qilecai', description: '7个号码，每周三期', price: 2 },
-  { id: 3, name: '3D', category: '数字型', color: '#1890ff', icon: '🎲', route: '3d', description: '3位号码，每天开奖', price: 2 },
-];
-
-// 模拟奖池数据
-const prizePool = 1234567890;
-
-// 模拟开奖信息数据
-const drawResults = [
-  { lottery: '双色球', issue: '2023001', numbers: ['01', '05', '12', '18', '22', '27', '+08'], date: '2023-01-01' },
-  { lottery: '七乐彩', issue: '2023002', numbers: ['03', '07', '15', '19', '25', '28', '30'], date: '2023-01-02' },
-  { lottery: '3D', issue: '2023003', numbers: ['4', '7', '9'], date: '2023-01-03' },
-  { lottery: '快乐8', issue: '2023004', numbers: ['01', '03', '05', '07', '09', '11', '13', '15', '17', '19'], date: '2023-01-04' },
-];
+// 图片映射（直接使用 URL 路径）
+const lotteryImages: { [key: string]: string } = {
+  shuangseqiu: '../assets/lottery-shuangseqiu.png',
+  qilecai: '../assets/lottery-qilecai.png',
+  '3d': '../assets/lottery-3d.png',
+};
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
+  const [lotteryTypes, setLotteryTypes] = useState<LotteryType[]>([]);
+  const [lotteries, setLotteries] = useState<Lottery[]>([]);
   const [displayPrize, setDisplayPrize] = useState(0);
 
-  // 模拟奖池金额滚动效果
+  // 模拟开奖信息（假设后端未提供接口，实际应替换为真实 API）
+  const drawResults = [
+    { lottery: '双色球', issue: '2023001', numbers: ['01', '05', '12', '18', '22', '27', '+08'], date: '2023-01-01' },
+    { lottery: '七乐彩', issue: '2023002', numbers: ['03', '07', '15', '19', '25', '28', '30'], date: '2023-01-02' },
+    { lottery: '3D', issue: '2023003', numbers: ['4', '7', '9'], date: '2023-01-03' },
+  ];
+
+  // 加载数据
   useEffect(() => {
-    const target = prizePool;
-    const increment = Math.ceil(target / 100);
-    let current = 0;
+    const loadData = async () => {
+      try {
+        const types = await getLotteryTypes();
+        const lotteryData = await getLotteries();
+        const prize = await getPrizePool();
+        setLotteryTypes(types);
+        setLotteries(lotteryData);
 
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= target) {
-        setDisplayPrize(target);
-        clearInterval(timer);
-      } else {
-        setDisplayPrize(current);
+        // 奖池滚动效果
+        const target = prize;
+        const increment = Math.ceil(target / 100);
+        let current = 0;
+
+        const timer = setInterval(() => {
+          current += increment;
+          if (current >= target) {
+            setDisplayPrize(target);
+            clearInterval(timer);
+          } else {
+            setDisplayPrize(current);
+          }
+        }, 20);
+
+        return () => clearInterval(timer);
+      } catch (error) {
+        console.error('加载首页数据失败:', error);
       }
-    }, 20);
-
-    return () => clearInterval(timer);
+    };
+    loadData();
   }, []);
-
-  
 
   const handleLotteryClick = (route: string) => {
     navigate(`/lottery/${route}`);
@@ -84,14 +87,27 @@ const Home: React.FC = () => {
     { title: '开奖日期', dataIndex: 'date', key: 'date' },
   ];
 
+  // 根据 type_id 获取类型名称
+  const getTypeName = (typeId: string) => lotteryTypes.find(t => t.type_id === typeId)?.type_name || '未知类型';
+
+  // 动态生成路由
+  const getRoute = (lotteryName: string) => lotteryName.toLowerCase().replace(/\s+/g, '');
+
+  // 动态分配颜色（作为备用，如果图片加载失败）
+  const getColor = (index: number) => {
+    const colors = ['#fadb14', '#ff4d4f', '#1890ff', '#eb2f96', '#fa8c16'];
+    return colors[index % colors.length];
+  };
+
   return (
     <div style={{ padding: '40px', background: '#e6f7ff' }}>
+      {/* 彩票分类 */}
       <Space size="large" style={{ marginBottom: '40px', display: 'flex', justifyContent: 'center' }}>
-        {lotteryCategories.map(category => (
+        {lotteryTypes.map((category, index) => (
           <div
-            key={category.name}
+            key={category.type_id}
             style={{
-              backgroundColor: category.color,
+              backgroundColor: getColor(index),
               color: '#fff',
               padding: '10px 20px',
               borderRadius: '20px',
@@ -100,7 +116,7 @@ const Home: React.FC = () => {
               boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
             }}
           >
-            {category.name}
+            {category.type_name}
           </div>
         ))}
       </Space>
@@ -134,44 +150,75 @@ const Home: React.FC = () => {
 
       {/* 彩票列表 */}
       <Row gutter={[24, 24]} justify="center">
-        {lotteries.map(lottery => (
-          <Col key={lottery.name} xs={24} sm={12} md={8} lg={6}>
-            <Card
-              hoverable
-              className="lottery-card"
-              style={{
-                backgroundColor: lottery.color,
-                borderRadius: '16px',
-                overflow: 'hidden',
-                textAlign: 'center',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              }}
-              onClick={() => handleLotteryClick(lottery.route)}
-            >
-              <div
+        {lotteries.map((lottery, index) => {
+          const typeName = getTypeName(lottery.type_id);
+          const route = getRoute(typeName);
+          const imageSrc = lotteryImages[route] || '';
+
+          return (
+            <Col key={lottery.lottery_id} xs={24} sm={12} md={8} lg={6}>
+              <Card
+                hoverable
+                className="lottery-card"
                 style={{
-                  background: '#fff',
-                  borderRadius: '50%',
-                  width: '80px',
-                  height: '80px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 16px',
-                  fontSize: '40px',
+                  backgroundImage: imageSrc ? `url(${imageSrc})` : undefined,
+                  backgroundColor: imageSrc ? 'transparent' : getColor(index),
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  textAlign: 'center',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  position: 'relative',
+                  color: '#fff',
                 }}
+                onClick={() => handleLotteryClick(route)}
               >
-                {lottery.icon}
-              </div>
-              <Title level={4} style={{ color: '#fff', margin: 0 }}>
-                {lottery.name}
-              </Title>
-              <Text style={{ color: '#fff', opacity: 0.8 }}>
-                {lottery.category}
-              </Text>
-            </Card>
-          </Col>
-        ))}
+                {/* 半透明遮罩层，增强文字可读性 */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.4)',
+                    borderRadius: '16px',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    padding: '20px',
+                  }}
+                >
+                  <div
+                    style={{
+                      background: '#fff',
+                      borderRadius: '50%',
+                      width: '80px',
+                      height: '80px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 16px',
+                      fontSize: '40px',
+                    }}
+                  >
+                    🎲
+                  </div>
+                  <Title level={4} style={{ color: '#fff', margin: 0 }}>
+                    {typeName}
+                  </Title>
+                  <Text style={{ color: '#fff', opacity: 0.8 }}>
+                    单价: {lottery.ticket_price} USDT
+                  </Text>
+                </div>
+              </Card>
+            </Col>
+          );
+        })}
       </Row>
 
       {/* 开奖信息 */}

@@ -13,21 +13,6 @@ const Settings: React.FC = () => {
 
   return (
     <div style={{ padding: '40px', background: '#e6f7ff' }}>
-      {/* <div
-        style={{
-          background: 'url("https://www.pngall.com/wp-content/uploads/2016/05/White-Paper-PNG-Clipart.png") no-repeat center',
-          backgroundSize: 'contain',
-          height: '100px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '40px',
-        }}
-      >
-        <Title style={{ fontSize: '36px', color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
-          账户设置
-        </Title>
-      </div> */}
       <Row justify="center">
         <Col span={12}>
           <Card
